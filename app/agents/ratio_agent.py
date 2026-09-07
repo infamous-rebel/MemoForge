@@ -67,6 +67,23 @@ class RatioAgentResult:
     breaches: List[RatioBreach] = field(default_factory=list)
     extraction_notes: str = ""
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to a JSON-serializable dictionary."""
+        return {
+            "net_operating_income": self.net_operating_income,
+            "total_debt_service": self.total_debt_service,
+            "total_liabilities": self.total_liabilities,
+            "total_equity": self.total_equity,
+            "current_assets": self.current_assets,
+            "current_liabilities": self.current_liabilities,
+            "source_chunk_ids": self.source_chunk_ids,
+            "dscr": self.dscr,
+            "leverage_ratio": self.leverage_ratio,
+            "current_ratio": self.current_ratio,
+            "breaches": [b.to_dict() for b in self.breaches],
+            "extraction_notes": self.extraction_notes,
+        }
+
 
 # JSON schema for structured extraction
 _FINANCIAL_SCHEMA = {

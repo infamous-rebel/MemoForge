@@ -10,6 +10,7 @@ import ECLDashboard from "./pages/ECLDashboard";
 import Reports from "./pages/Reports";
 import AuditLog from "./pages/AuditLog";
 import Admin from "./pages/Admin";
+import NotificationCenter from "./pages/NotificationCenter";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("token");
@@ -37,6 +38,7 @@ export default function App() {
                   <Route path="/review/:memoId" element={<MemoReview />} />
                   <Route path="/ecl" element={<ECLDashboard />} />
                   <Route path="/reports" element={<Reports />} />
+                  <Route path="/notifications" element={<NotificationCenter />} />
                   <Route path="/audit" element={<AuditLog />} />
                   <Route path="/admin" element={<Admin />} />
                 </Routes>

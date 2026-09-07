@@ -643,12 +643,115 @@ class TestAPI:
         assert "MemoForge" in response.json()["name"]
 
     def test_auth_token(self, client):
-        response = client.post("/v1/auth/token", json={
-            "username": "test", "password": "test", "role": "RM"
-        })
-        assert response.status_code == 200
-        assert "access_token" in response.json()
+        """Test legacy auth endpoint (now requires real user store)."""
+        from app.core import users
+        from app.db.session import get_db_session, init_db, get_engine
+        engine = get_engine()
+        init_db(engine)
+        db = get_db_session()
+        try:
+            users.ensure_default_users(db)
+            db.commit()
+            response = client.post("/v1/auth/token", json={
+                "username": "rm_ahmad", "password": "warba2025"
+            })
+            assert response.status_code == 200
+            assert "access_token" in response.json()
+        finally:
+            db.close()
 
     def test_unauthorized_access(self, client):
         response = client.get("/v1/memo/test-id")
         assert response.status_code == 401
+
+    def test_auth_token_with_valid_credentials(self, client):
+        """Test login with default bootstrap user."""
+        from app.core import users
+        from app.db.session import get_db_session, init_db, get_engine
+        engine = get_engine()
+        init_db(engine)
+        db = get_db_session()
+        try:
+            users.ensure_default_users(db)
+            db.commit()
+            response = client.post("/v1/auth/token", json={
+                "username": "rm_ahmad", "password": "warba2025"
+            })
+            assert response.status_code == 200
+            data = response.json()
+            assert "access_token" in data
+            assert data["user_id"] is not None
+            assert data["role"] == "RM"
+            assert data["full_name"] is not None
+        finally:
+            db.close()
+
+    def test_auth_token_with_invalid_credentials(self, client):
+        """Test login with wrong password."""
+        response = client.post("/v1/auth/token", json={
+            "username": "rm_ahmad", "password": "wrongpassword"
+        })
+        assert response.status_code == 401
+
+    def test_list_memos(self, client, auth_headers):
+        """Test listing memos with SLA computation."""
+        response = client.get("/v1/memos", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "memos" in data
+        assert isinstance(data["memos"], list)
+
+    def test_notifications_list(self, client, auth_headers):
+        """Test listing notifications for current user."""
+        response = client.get("/v1/notifications", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "notifications" in data
+        assert "unread_count" in data
+
+    def test_escalations_list(self, client, admin_headers):
+        """Test listing active escalations (Admin/Risk/CC only)."""
+        response = client.get("/v1/escalations", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "escalations" in data
+
+    def test_escalations_check_admin(self, client, admin_headers):
+        """Test running escalation check (admin only)."""
+        response = client.post("/v1/escalations/check", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "triggered" in data
+
+    def test_global_audit_log(self, client, auth_headers):
+        """Test global hash-chained audit log."""
+        response = client.get("/v1/audit-log", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "entries" in data
+        assert isinstance(data["entries"], list)
+
+    def test_users_list_admin(self, client, admin_headers):
+        """Test listing users (admin only)."""
+        response = client.get("/v1/users", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "users" in data
+        assert isinstance(data["users"], list)
+
+    def test_clients_list(self, client, auth_headers):
+        """Test client directory from CRM connector."""
+        response = client.get("/v1/clients", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "clients" in data
+
+    def test_reports_generation(self, client, auth_headers):
+        """Test on-demand report generation."""
+        response = client.get("/v1/reports/pipeline_status", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "report_type" in data
+        assert data["report_type"] == "pipeline_status"
+        assert "generated_at" in data
+        assert "summary" in data

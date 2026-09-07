@@ -3,14 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useToast } from "../components/Toast";
 import { SkeletonTable } from "../components/Skeleton";
-import {
-  pipelineMemos,
-  complianceAlerts,
-  eclSummary,
-  formatKD,
-  type SlaStatus,
-  type WorkflowStage,
-} from "../data/mockData";
+import { getMemos, computeECL } from "../services/api";
+import type { MemoListItem, ECLResult } from "../types/api";
+import { formatKD } from "../data/mockData";
+
+type SlaStatus = "On Track" | "At Risk" | "Overdue";
+type WorkflowStage = string;
 
 const kpis = [
   {
@@ -85,29 +83,52 @@ export default function Dashboard() {
   const { push } = useToast();
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState("#MEM-2026-081");
-  const slaClock = useCountdown(22 * 3600 + 14 * 60 + 5);
+  const [memos, setMemos] = useState<MemoListItem[]>([]);
+  const [eclData, setEclData] = useState<ECLResult | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setLoading(false), 700);
-    return () => window.clearTimeout(t);
+    async function fetchData() {
+      try {
+        const [memosRes, eclRes] = await Promise.all([
+          getMemos(),
+          computeECL().catch(() => null),
+        ]);
+        setMemos(memosRes.memos);
+        setEclData(eclRes);
+        if (memosRes.memos.length > 0) {
+          setSelectedId(memosRes.memos[0].id);
+        }
+      } catch (err) {
+        push("Failed to load dashboard data", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
-  const selected = pipelineMemos.find((m) => m.id === selectedId) ?? pipelineMemos[0];
+  const selected = memos.find((m) => m.id === selectedId) ?? memos[0];
 
   const filtered = useMemo(() => {
-    if (!search) return pipelineMemos;
+    if (!search) return memos;
     const q = search.toLowerCase();
-    return pipelineMemos.filter(
+    return memos.filter(
       (m) =>
         m.id.toLowerCase().includes(q) ||
-        m.client.toLowerCase().includes(q) ||
-        m.facilityType.toLowerCase().includes(q) ||
-        m.stage.toLowerCase().includes(q),
+        m.client_name.toLowerCase().includes(q) ||
+        m.facility_type.toLowerCase().includes(q) ||
+        m.workflow_stage.toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, memos]);
 
-  const eclPie = eclSummary.stages.map((s) => ({ name: s.name, label: s.label, value: s.value }));
+  const eclPie = eclData
+    ? [
+        { name: "Stage 1", label: "Low Risk", value: eclData.stage_1_ecl },
+        { name: "Stage 2", label: "Inc. Risk", value: eclData.stage_2_ecl },
+        { name: "Stage 3", label: "Impaired", value: eclData.stage_3_ecl },
+      ]
+    : [];
 
   return (
     <div>
@@ -211,27 +232,31 @@ export default function Dashboard() {
                       <tr
                         key={m.id}
                         onClick={() => setSelectedId(m.id)}
-                        className={`table-row cursor-pointer ${m.id === selected.id ? "bg-blue-50/40" : ""}`}
+                        className={`table-row cursor-pointer ${m.id === selected?.id ? "bg-blue-50/40" : ""}`}
                       >
                         <td className="px-6 py-4 font-mono text-xs font-semibold text-frost-navy">{m.id}</td>
                         <td className="px-4 py-4">
-                          <p className="font-semibold text-frost-deep">{m.client}</p>
-                          <p className="text-xs text-frost-steel">{m.clientCode}</p>
+                          <p className="font-semibold text-frost-deep">{m.client_name}</p>
+                          <p className="text-xs text-frost-steel">{m.client_id}</p>
                         </td>
-                        <td className="px-4 py-4 text-frost-slate">{m.facilityType}</td>
+                        <td className="px-4 py-4 text-frost-slate">{m.facility_type}</td>
                         <td className="px-4 py-4">
-                          <span className={stageBadge[m.stage]}>● {m.stage}</span>
+                          <span className={stageBadge[m.workflow_stage as WorkflowStage] || "badge-gray"}>● {m.workflow_stage}</span>
                         </td>
                         <td className="px-4 py-4">
-                          <span className={slaBadge[m.slaStatus]}>{m.slaStatus}</span>
-                          <p className="mt-1 text-xs text-frost-steel">{m.slaRemaining}</p>
+                          <span className={slaBadge[m.sla_status || "On Track"]}>{m.sla_status || "On Track"}</span>
+                          <p className="mt-1 text-xs text-frost-steel">
+                            {m.sla_hours_remaining !== null
+                              ? `${Math.round(m.sla_hours_remaining)}h remaining`
+                              : "—"}
+                          </p>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/review/${m.id.replace("#", "")}`);
+                                navigate(`/review/${m.id}`);
                               }}
                               className="rounded-lg p-2 text-frost-slate transition hover:bg-frost-light hover:text-frost-navy"
                               title="View memo"
@@ -245,7 +270,7 @@ export default function Dashboard() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedId(m.id);
-                                push(`${m.id} escalated to ${m.assignedRole}.`, "info");
+                                push(`${m.id} escalation triggered.`, "info");
                               }}
                               className="rounded-lg p-2 text-frost-slate transition hover:bg-amber-50 hover:text-status-warning"
                               title="Escalate"
@@ -265,7 +290,7 @@ export default function Dashboard() {
 
             <div className="flex items-center justify-between border-t border-frost-mist px-6 py-3.5">
               <p className="text-xs text-frost-steel">
-                Showing {filtered.length} of {pipelineMemos.length} memos
+                Showing {filtered.length} of {memos.length} memos
               </p>
               <button
                 onClick={() => push("Full pipeline view is available in the Reporting Center.", "info")}
@@ -283,15 +308,19 @@ export default function Dashboard() {
           <div className="card p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-frost-deep">Approval Workflow</h2>
-              <span className="badge-amber">{selected.priority}</span>
+              {selected && selected.deal_value > 2_000_000 && (
+                <span className="badge-amber">HIGH VALUE</span>
+              )}
             </div>
 
-            <div className="panel-navy mt-4 px-5 py-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Selected Memo</p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                {selected.id}: {selected.client}
-              </p>
-            </div>
+            {selected && (
+              <div className="panel-navy mt-4 px-5 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">Selected Memo</p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  {selected.id}: {selected.client_name}
+                </p>
+              </div>
+            )}
 
             {/* 5-stage progress */}
             <div className="mt-5 flex items-center">
@@ -322,19 +351,28 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="mt-5 border-t border-frost-mist pt-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-frost-steel">Assigned</p>
-                  <p className="mt-1 text-sm font-semibold text-frost-deep">{selected.assignedRole}</p>
-                  <p className="mt-0.5 text-xs text-frost-slate">{selected.assignedNote}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-frost-steel">SLA Countdown</p>
-                  <p className="mt-1 font-mono text-xl font-bold text-status-danger">{slaClock}</p>
+            {selected && (
+              <div className="mt-5 border-t border-frost-mist pt-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-frost-steel">Created By</p>
+                    <p className="mt-1 text-sm font-semibold text-frost-deep">{selected.created_by}</p>
+                    <p className="mt-0.5 text-xs text-frost-slate">{selected.facility_type}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-frost-steel">SLA Status</p>
+                    <p className="mt-1 text-sm font-semibold text-frost-deep">
+                      {selected.sla_status || "On Track"}
+                    </p>
+                    {selected.sla_hours_remaining !== null && (
+                      <p className="mt-0.5 text-xs text-frost-slate">
+                        {Math.round(selected.sla_hours_remaining)}h remaining
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* ECL Breakdown */}
@@ -374,7 +412,7 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-2 space-y-1.5">
-              {eclSummary.stages.map((s, i) => (
+              {eclPie.map((s, i) => (
                 <div key={s.name} className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-2 text-frost-slate">
                     <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: stageColors[i] }} />
@@ -385,20 +423,22 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-frost-mist pt-4">
-              <div className="rounded-xl bg-frost-light px-4 py-3">
-                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-frost-steel">MemoForge ECL</p>
-                <p className="mt-1 font-display text-lg font-bold text-frost-navy">
-                  {formatKD(eclSummary.memoforgeEcl)}
-                </p>
+            {eclData && (
+              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-frost-mist pt-4">
+                <div className="rounded-xl bg-frost-light px-4 py-3">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-frost-steel">Total ECL</p>
+                  <p className="mt-1 font-display text-lg font-bold text-frost-navy">
+                    {formatKD(eclData.total_ecl)}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-gold/10 px-4 py-3">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-frost-steel">Facilities</p>
+                  <p className="mt-1 font-display text-lg font-bold text-frost-navy">
+                    {eclData.facility_count}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-xl bg-gold/10 px-4 py-3">
-                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-frost-steel">Warba Actuals</p>
-                <p className="mt-1 font-display text-lg font-bold text-frost-navy">
-                  {formatKD(eclSummary.warbaActuals)}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Compliance Alerts */}
@@ -408,23 +448,31 @@ export default function Dashboard() {
               <h2 className="text-base font-bold text-frost-deep">Compliance Alerts</h2>
             </div>
             <ul className="mt-4 space-y-4">
-              {complianceAlerts.map((a) => (
-                <li key={`${a.kind}-${a.memoId}`} className="border-b border-frost-mist/60 pb-4 last:border-0 last:pb-0">
-                  <div className="flex items-center justify-between">
-                    <span className={a.kind === "SHARIAH FLAG" ? "badge-red" : a.kind === "CITATION ISSUE" ? "badge-blue" : "badge-amber"}>
-                      {a.kind}
-                    </span>
-                    <span className="text-[10px] text-frost-steel">{a.when}</span>
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-frost-slate">{a.detail}</p>
-                  <button
-                    onClick={() => navigate(`/review/${a.memoId.replace("#", "").replace("#", "")}`)}
-                    className="mt-1.5 text-sm font-semibold text-frost-navy transition hover:text-gold"
-                  >
-                    {a.action} →
-                  </button>
-                </li>
-              ))}
+              {memos
+                .filter((m) => m.shariah_flag_count > 0 || m.citation_flag_count > 0)
+                .slice(0, 3)
+                .map((m) => (
+                  <li key={m.id} className="border-b border-frost-mist/60 pb-4 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between">
+                      <span className={m.shariah_flag_count > 0 ? "badge-red" : "badge-blue"}>
+                        {m.shariah_flag_count > 0 ? "SHARIAH FLAG" : "CITATION ISSUE"}
+                      </span>
+                      <span className="text-[10px] text-frost-steel">{m.id}</span>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-frost-slate">
+                      {m.client_name} — {m.shariah_flag_count} shariah flag(s), {m.citation_flag_count} citation(s)
+                    </p>
+                    <button
+                      onClick={() => navigate(`/review/${m.id}`)}
+                      className="mt-1.5 text-sm font-semibold text-frost-navy transition hover:text-gold"
+                    >
+                      Review Now →
+                    </button>
+                  </li>
+                ))}
+              {memos.filter((m) => m.shariah_flag_count > 0 || m.citation_flag_count > 0).length === 0 && (
+                <li className="text-sm text-frost-steel">No compliance alerts</li>
+              )}
             </ul>
           </div>
         </div>
@@ -442,7 +490,7 @@ export default function Dashboard() {
           Approve Section
         </button>
         <button
-          onClick={() => push(`${selected.id} escalated to ${selected.assignedRole}.`, "info")}
+          onClick={() => selected && push(`${selected.id} escalation triggered.`, "info")}
           className="btn-danger w-full"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

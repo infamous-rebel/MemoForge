@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useToast } from "../components/Toast";
-import { pipelineStatus, slaViolations, approvalDelays } from "../data/mockData";
+import { getReport, getEscalations } from "../services/api";
+import type { ReportSummary, EscalationItem } from "../types/api";
 
 const violationBadge: Record<string, string> = {
   "CRITICAL BREACH": "bg-red-100 text-red-700",
@@ -15,9 +16,69 @@ export default function Reports() {
   const { push } = useToast();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("SLA VIOLATIONS");
+  const [report, setReport] = useState<ReportSummary | null>(null);
+  const [escalations, setEscalations] = useState<EscalationItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const logs = tab === "SLA VIOLATIONS" ? slaViolations : approvalDelays;
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [reportRes, escRes] = await Promise.all([
+          getReport("pipeline_status"),
+          getEscalations(),
+        ]);
+        setReport(reportRes);
+        setEscalations(escRes.escalations);
+      } catch (err) {
+        push("Failed to load reporting data", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  // Parse the detailed content JSON string from the API response
+  const parsedContent = (() => {
+    if (!report?.content) return null;
+    try {
+      return JSON.parse(report.content) as {
+        total_memos: number;
+        by_stage: Record<string, number>;
+        by_status: Record<string, number>;
+        finalized_count: number;
+        avg_approval_hours: number | null;
+        memos: Array<Record<string, unknown>>;
+      };
+    } catch {
+      return null;
+    }
+  })();
+
+  // Transform report data to pipeline status format for the chart
+  const pipelineStatus = parsedContent
+    ? [
+        { name: "Draft", value: parsedContent.by_stage["draft"] || 0, color: "#64748B" },
+        { name: "In Review", value: (parsedContent.by_stage["review"] || 0) + (parsedContent.by_stage["risk_review"] || 0) + (parsedContent.by_stage["shariah_review"] || 0), color: "#0F2A4A" },
+        { name: "Approved", value: parsedContent.by_status["approved"] || 0, color: "#10B981" },
+        { name: "Finalized", value: parsedContent.finalized_count || 0, color: "#F59E0B" },
+      ]
+    : [];
+
   const totalPipeline = pipelineStatus.reduce((s, p) => s + p.value, 0);
+
+  // Use escalations as SLA violations
+  const slaViolations = escalations.map((e) => ({
+    type: e.sla_breach_pct > 100 ? "CRITICAL BREACH" : "WARNING",
+    memoId: e.memo_id,
+    stage: e.escalation_reason,
+    assignedTo: "Risk Manager",
+    delay: `${Math.round(e.sla_breach_pct)}%`,
+    action: e.sla_breach_pct > 100 ? "ESCALATE" : "REVIEW",
+  }));
+
+  const approvalDelays = slaViolations; // Same data for now
+  const logs = tab === "SLA VIOLATIONS" ? slaViolations : approvalDelays;
 
   const handleExport = () => {
     const header = "Violation Type,Memo ID,Stage,Assigned To,Delay Duration,Action";
@@ -106,24 +167,41 @@ export default function Reports() {
         {/* SLA breach risk */}
         <div className="card flex flex-col justify-center p-6">
           <p className="text-xs font-bold uppercase tracking-wider text-frost-steel">SLA Breach Risk</p>
-          <p className="mt-3 font-display text-5xl font-bold text-status-warning">12%</p>
+          <p className="mt-3 font-display text-5xl font-bold text-status-warning">
+            {report && totalPipeline > 0
+              ? `${Math.round((escalations.length / totalPipeline) * 100)}%`
+              : "0%"}
+          </p>
           <p className="mt-2 text-sm text-frost-slate">Memos nearing escalation</p>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-frost-mist">
-            <div className="h-full w-[12%] rounded-full bg-status-warning" />
+            <div
+              className="h-full rounded-full bg-status-warning"
+              style={{
+                width: report && totalPipeline > 0
+                  ? `${(escalations.length / totalPipeline) * 100}%`
+                  : "0%",
+              }}
+            />
           </div>
         </div>
 
         {/* Avg approval time */}
         <div className="card flex flex-col justify-center p-6">
           <p className="text-xs font-bold uppercase tracking-wider text-frost-steel">Avg. Approval Time</p>
-          <p className="mt-3 font-display text-5xl font-bold text-frost-navy">4.2d</p>
+          <p className="mt-3 font-display text-5xl font-bold text-frost-navy">
+            {report?.summary?.avg_approval_hours
+              ? `${(report.summary.avg_approval_hours / 24).toFixed(1)}d`
+              : "—"}
+          </p>
           <p className="mt-2 text-sm text-frost-slate">Target: 3.5 days</p>
-          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-status-warning">
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
-            </svg>
-            0.7d above target
-          </div>
+          {report?.summary?.avg_approval_hours && report.summary.avg_approval_hours > 84 && (
+            <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-status-warning">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+              </svg>
+              {((report.summary.avg_approval_hours - 84) / 24).toFixed(1)}d above target
+            </div>
+          )}
         </div>
       </div>
 
@@ -159,31 +237,45 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {logs.map((l) => (
-                <tr key={`${l.memoId}-${l.type}`} className="table-row">
-                  <td className="px-6 py-4">
-                    <span className={`badge ${violationBadge[l.type]}`}>{l.type}</span>
-                  </td>
-                  <td className="px-4 py-4 font-mono text-xs font-semibold text-frost-navy">{l.memoId}</td>
-                  <td className="px-4 py-4 text-frost-slate">{l.stage}</td>
-                  <td className="px-4 py-4 text-frost-deep">{l.assignedTo}</td>
-                  <td className="px-4 py-4 font-mono text-xs font-bold text-status-warning">{l.delay}</td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => {
-                        if (l.action === "ESCALATE") {
-                          push(`${l.memoId} escalated to senior reviewer.`, "info");
-                        } else {
-                          navigate(`/review/${l.memoId.replace("#", "").replace("#", "")}`);
-                        }
-                      }}
-                      className="text-xs font-bold uppercase tracking-wide text-frost-navy underline decoration-gold decoration-2 underline-offset-4 transition hover:text-gold"
-                    >
-                      {l.action}
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-frost-steel">
+                    Loading...
                   </td>
                 </tr>
-              ))}
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-frost-steel">
+                    No {tab.toLowerCase()} found
+                  </td>
+                </tr>
+              ) : (
+                logs.map((l) => (
+                  <tr key={`${l.memoId}-${l.type}`} className="table-row">
+                    <td className="px-6 py-4">
+                      <span className={`badge ${violationBadge[l.type]}`}>{l.type}</span>
+                    </td>
+                    <td className="px-4 py-4 font-mono text-xs font-semibold text-frost-navy">{l.memoId}</td>
+                    <td className="px-4 py-4 text-frost-slate">{l.stage}</td>
+                    <td className="px-4 py-4 text-frost-deep">{l.assignedTo}</td>
+                    <td className="px-4 py-4 font-mono text-xs font-bold text-status-warning">{l.delay}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => {
+                          if (l.action === "ESCALATE") {
+                            push(`${l.memoId} escalated to senior reviewer.`, "info");
+                          } else {
+                            navigate(`/review/${l.memoId}`);
+                          }
+                        }}
+                        className="text-xs font-bold uppercase tracking-wide text-frost-navy underline decoration-gold decoration-2 underline-offset-4 transition hover:text-gold"
+                      >
+                        {l.action}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

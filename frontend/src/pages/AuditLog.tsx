@@ -22,7 +22,7 @@ export default function AuditLog() {
     setLoading(true);
     try {
       const data = await getAuditLog();
-      setLogs(data);
+      setLogs(data.entries);
       push("Audit log refreshed from the hash-chained ledger.", "success");
     } catch {
       setLogs(demoLogs);

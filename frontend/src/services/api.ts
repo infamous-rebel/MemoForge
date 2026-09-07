@@ -5,6 +5,11 @@ import type {
   AuditLogEntry,
   ReportSummary,
   GenerateMemoRequest,
+  MemoListItem,
+  NotificationItem,
+  EscalationItem,
+  UserAccount,
+  ClientProfile,
 } from "../types/api";
 
 const BASE = "/api/v1";
@@ -45,6 +50,10 @@ export async function generateMemo(req: GenerateMemoRequest): Promise<Memo> {
   });
 }
 
+export async function getMemos(): Promise<{ memos: MemoListItem[] }> {
+  return request<{ memos: MemoListItem[] }>("/memos");
+}
+
 export async function getMemo(id: string): Promise<Memo> {
   return request<Memo>(`/memo/${id}`);
 }
@@ -54,9 +63,9 @@ export async function approveSection(
   sectionKey: string,
   comments: string,
 ): Promise<unknown> {
-  return request(`/approve`, {
+  return request(`/memo/${memoId}/approve`, {
     method: "POST",
-    body: JSON.stringify({ memo_id: memoId, section_key: sectionKey, comments }),
+    body: JSON.stringify({ section_key: sectionKey, comments }),
   });
 }
 
@@ -65,31 +74,88 @@ export async function rejectSection(
   sectionKey: string,
   comments: string,
 ): Promise<unknown> {
-  return request(`/reject`, {
+  return request(`/memo/${memoId}/reject`, {
     method: "POST",
-    body: JSON.stringify({ memo_id: memoId, section_key: sectionKey, comments }),
+    body: JSON.stringify({ section_key: sectionKey, comments }),
   });
 }
 
 export async function finalizeMemo(memoId: string): Promise<unknown> {
-  return request(`/finalize`, {
+  return request(`/memo/${memoId}/finalize`, {
     method: "POST",
-    body: JSON.stringify({ memo_id: memoId }),
+    body: JSON.stringify({}),
   });
+}
+
+export async function getMemoWorkflow(id: string): Promise<unknown> {
+  return request(`/memo/${id}/workflow`);
+}
+
+export async function getMemoAuditLog(id: string): Promise<{ entries: AuditLogEntry[] }> {
+  return request<{ entries: AuditLogEntry[] }>(`/memo/${id}/audit-log`);
+}
+
+export async function notifyMemo(id: string): Promise<unknown> {
+  return request(`/memo/${id}/notify`, { method: "POST" });
 }
 
 // --- ECL ---
 export async function computeECL(): Promise<ECLResult> {
-  return request<ECLResult>("/ecl/compute", { method: "POST" });
+  return request<ECLResult>("/risk/ecl", { method: "POST" });
 }
 
 // --- Audit ---
-export async function getAuditLog(memoId?: string): Promise<AuditLogEntry[]> {
-  const q = memoId ? `?memo_id=${memoId}` : "";
-  return request<AuditLogEntry[]>(`/audit-log${q}`);
+export async function getAuditLog(): Promise<{ entries: AuditLogEntry[] }> {
+  return request<{ entries: AuditLogEntry[] }>("/audit-log");
 }
 
 // --- Reports ---
-export async function getReports(): Promise<ReportSummary> {
-  return request<ReportSummary>("/reports");
+export async function getReport(reportType: string): Promise<ReportSummary> {
+  return request<ReportSummary>(`/reports/${reportType}`);
+}
+
+// --- Notifications ---
+export async function getNotifications(): Promise<{
+  notifications: NotificationItem[];
+  unread_count: number;
+}> {
+  return request<{ notifications: NotificationItem[]; unread_count: number }>(
+    "/notifications",
+  );
+}
+
+export async function markNotificationRead(id: string): Promise<unknown> {
+  return request(`/notifications/${id}/read`, { method: "POST" });
+}
+
+// --- Escalations ---
+export async function getEscalations(): Promise<{ escalations: EscalationItem[] }> {
+  return request<{ escalations: EscalationItem[] }>("/escalations");
+}
+
+export async function checkEscalations(): Promise<{ triggered: unknown[] }> {
+  return request<{ triggered: unknown[] }>("/escalations/check", { method: "POST" });
+}
+
+// --- Users ---
+export async function getUsers(): Promise<{ users: UserAccount[] }> {
+  return request<{ users: UserAccount[] }>("/users");
+}
+
+export async function createUser(user: {
+  username: string;
+  password: string;
+  full_name: string;
+  email?: string;
+  role: string;
+}): Promise<UserAccount> {
+  return request<UserAccount>("/users", {
+    method: "POST",
+    body: JSON.stringify(user),
+  });
+}
+
+// --- Clients ---
+export async function getClients(): Promise<{ clients: ClientProfile[] }> {
+  return request<{ clients: ClientProfile[] }>("/clients");
 }

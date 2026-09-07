@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Role } from "../types/api";
 import { useToast } from "../components/Toast";
-import { roleConfiguration, systemAuditLog } from "../data/mockData";
+import { getAuditLog, getUsers } from "../services/api";
+import type { AuditLogEntry, UserAccount } from "../types/api";
 
 const ROLES: Role[] = ["RM", "Risk", "CreditCommittee", "ShariahBoard", "Admin"];
 
@@ -59,15 +60,54 @@ function PolicyToggle({ label, description, checked, onChange }: PolicyTogglePro
 
 export default function Admin() {
   const { push } = useToast();
-  const [selectedRole, setSelectedRole] = useState<string>(roleConfiguration[0].role);
+  const [selectedRole, setSelectedRole] = useState<string>("RM");
   const [policies, setPolicies] = useState({ dualApproval: true, shariahAutoSigning: false });
   const [search, setSearch] = useState("");
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [users, setUsers] = useState<UserAccount[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [showAddUser, setShowAddUser] = useState(false);
   const [newUserId, setNewUserId] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<Role>("RM");
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [auditRes, usersRes] = await Promise.all([
+          getAuditLog(),
+          getUsers().catch(() => ({ users: [] })),
+        ]);
+        setAuditLog(auditRes.entries);
+        setUsers(usersRes.users);
+      } catch (err) {
+        push("Failed to load admin data", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  // Transform audit log to match the UI structure
+  const systemAuditLog = auditLog.map((entry) => ({
+    timestamp: new Date(entry.timestamp).toLocaleString(),
+    user: entry.user_id || "system",
+    action: entry.action,
+    resource: entry.memo_id || "—",
+    status: String(entry.payload_json?.status || "SUCCESS"),
+  }));
+
+  // Mock role configuration for now
+  const roleConfiguration = [
+    { role: "RM", level: "green", description: "Relationship Manager" },
+    { role: "Risk", level: "navy", description: "Risk Head" },
+    { role: "CreditCommittee", level: "navy", description: "Credit Committee" },
+    { role: "ShariahBoard", level: "gray", description: "Shariah Advisor" },
+    { role: "Admin", level: "navy", description: "System Administrator" },
+  ];
 
   const filteredLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -122,7 +162,7 @@ export default function Admin() {
               {roleConfiguration.map((r) => {
                 const active = r.role === selectedRole;
                 const cardStyle = active
-                  ? r.color === "green"
+                  ? r.level === "green"
                     ? "border-emerald-200 bg-emerald-50/70"
                     : "border-frost-navy/25 bg-frost-light"
                   : "border-frost-mist bg-white hover:border-frost-navy/20 hover:bg-frost-surface";
@@ -139,10 +179,10 @@ export default function Admin() {
                       <div>
                         <p className="text-sm font-bold text-frost-deep">{r.role}</p>
                         <p className="mt-0.5 text-xs leading-relaxed text-frost-slate">
-                          {roleDescriptions[r.role]}
+                          {r.description}
                         </p>
                       </div>
-                      <span className={levelPill[r.color]}>{r.level}</span>
+                      <span className={levelPill[r.level]}>{r.level}</span>
                     </div>
                   </button>
                 );

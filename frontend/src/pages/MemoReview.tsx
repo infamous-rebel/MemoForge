@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { approveSection, rejectSection, finalizeMemo } from "../services/api";
+import { approveSection, rejectSection, finalizeMemo, getMemo, getMemoAuditLog } from "../services/api";
 import { useToast } from "../components/Toast";
-import { reviewSections, reviewWorkflow, auditTrail } from "../data/mockData";
+import type { Memo, AuditLogEntry } from "../types/api";
 
 function useCountdown(initialSeconds: number) {
   const [seconds, setSeconds] = useState(initialSeconds);
@@ -34,11 +34,45 @@ export default function MemoReview() {
   const { push } = useToast();
   const role = localStorage.getItem("role") || "RM";
   const canApprove = ["RM", "Risk", "CreditCommittee", "ShariahBoard"].includes(role);
-  const slaClock = useCountdown(22 * 3600 + 14 * 60 + 5);
 
+  const [memo, setMemo] = useState<Memo | null>(null);
+  const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [approved, setApproved] = useState<Record<string, boolean>>({});
   const [rejected, setRejected] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!memoId) return;
+      try {
+        const [memoRes, auditRes] = await Promise.all([
+          getMemo(memoId),
+          getMemoAuditLog(memoId).catch(() => ({ entries: [] })),
+        ]);
+        setMemo(memoRes);
+        setAuditEntries(auditRes.entries);
+      } catch (err) {
+        push("Failed to load memo", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [memoId]);
+
+  const reviewSections = memo?.sections || [];
+  const auditTrail = auditEntries;
+
+  // Mock workflow based on memo status
+  const reviewWorkflow = memo
+    ? [
+        { role: "Relationship Manager", kind: "done" as const, state: "SUBMITTED", meta: "Initial submission" },
+        { role: "Risk Manager", kind: memo.workflow_stage === "risk_review" ? "active" as const : "pending" as const, state: memo.workflow_stage === "risk_review" ? "REVIEWING" : "PENDING" },
+        { role: "Credit Committee", kind: "pending" as const, state: "PENDING" },
+        { role: "Shariah Board", kind: "pending" as const, state: "PENDING" },
+      ]
+    : [];
 
   const handleApprove = async (sectionTitle: string) => {
     try {
@@ -76,7 +110,7 @@ export default function MemoReview() {
   const effectiveStatus = (s: (typeof reviewSections)[number]) => {
     if (approved[s.title]) return "SECTION APPROVED";
     if (rejected[s.title]) return "LOCKED";
-    return s.status;
+    return s.review_status === "auto_approved" ? "SECTION APPROVED" : s.review_status === "pending" ? "PENDING REVIEW" : s.review_status.toUpperCase();
   };
 
   return (
@@ -116,17 +150,17 @@ export default function MemoReview() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* LEFT — sections */}
         <div className="space-y-6 xl:col-span-2">
-          {reviewSections.map((s) => {
+          {reviewSections.map((s, idx) => {
             const status = effectiveStatus(s);
             const locked = status === "LOCKED" && !!s.roleRestriction;
             return (
-              <article key={s.num} className={`card p-7 ${locked ? "opacity-75" : ""}`}>
+              <article key={s.section_key} className={`card p-7 ${locked ? "opacity-75" : ""}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-baseline gap-4">
-                    <span className="font-display text-3xl font-bold text-frost-mist">{s.num}</span>
+                    <span className="font-display text-3xl font-bold text-frost-mist">{String(idx + 1).padStart(2, "0")}</span>
                     <h2 className="text-xl font-bold text-frost-deep">{s.title}</h2>
                   </div>
-                  <span className={statusBadge[status]}>{status}</span>
+                  <span className={statusBadge[status] || "badge-gray"}>{status}</span>
                 </div>
 
                 {/* Role restriction (locked) */}
@@ -192,8 +226,10 @@ export default function MemoReview() {
                 )}
 
                 {/* Body */}
-                {s.body && (
+                {s.body ? (
                   <p className="mt-5 text-sm leading-relaxed text-frost-slate">{s.body}</p>
+                ) : (
+                  <p className="mt-5 text-sm leading-relaxed text-frost-slate">{s.content}</p>
                 )}
 
                 {/* Citation */}
@@ -202,7 +238,7 @@ export default function MemoReview() {
                 )}
 
                 {/* Review controls */}
-                {!locked && s.body && (
+                {!locked && (s.body || s.content) && (
                   <div className="mt-6 border-t border-frost-mist pt-5">
                     <label className="field-label">Review Comment</label>
                     <textarea
@@ -264,12 +300,11 @@ export default function MemoReview() {
                         {w.state}
                         {w.meta ? ` · ${w.meta}` : ""}
                       </p>
-                      {w.kind === "active" && (
+                      {w.kind === "active" && memo?.sla_status === "At Risk" && (
                         <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5">
                           <span className="text-[10px] font-bold uppercase tracking-wide text-status-danger">
-                            SLA expires in
+                            SLA At Risk
                           </span>
-                          <span className="font-mono text-sm font-bold text-status-danger">{slaClock}</span>
                         </div>
                       )}
                     </div>
@@ -295,15 +330,15 @@ export default function MemoReview() {
           <div className="card p-6">
             <h2 className="text-base font-bold text-frost-deep">Audit Trail</h2>
             <ol className="mt-5 space-y-4">
-              {auditTrail.map((a) => (
-                <li key={a.when + a.who} className="flex gap-3.5">
+              {auditTrail.map((a, idx) => (
+                <li key={a.id || idx} className="flex gap-3.5">
                   <div className="mt-1 flex h-2.5 w-2.5 shrink-0 rounded-full bg-frost-navy ring-4 ring-frost-navy/10" />
                   <div>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-sm font-semibold text-frost-deep">{a.who}</p>
-                      <span className="text-[10px] text-frost-steel">{a.when}</span>
+                      <p className="text-sm font-semibold text-frost-deep">{a.user_id || "system"}</p>
+                      <span className="text-[10px] text-frost-steel">{new Date(a.timestamp).toLocaleString()}</span>
                     </div>
-                    <p className="mt-0.5 text-xs leading-relaxed text-frost-slate">{a.what}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-frost-slate">{a.action}</p>
                   </div>
                 </li>
               ))}
