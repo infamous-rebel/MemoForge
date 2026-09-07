@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  /* ---- Buttons ---- */
+  .btn-navy {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-frost-navy px-5 py-2.5 text-sm font-semibold text-white shadow-card transition hover:bg-frost-deep focus:outline-none focus:ring-2 focus:ring-gold/60 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-5 py-2.5 text-sm font-semibold text-frost-navy shadow-card transition hover:bg-gold-soft focus:outline-none focus:ring-2 focus:ring-frost-navy/30 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-frost-mist bg-white px-5 py-2.5 text-sm font-semibold text-frost-deep shadow-card transition hover:border-frost-navy/30 hover:bg-frost-surface focus:outline-none focus:ring-2 focus:ring-frost-navy/20 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-frost-slate transition hover:bg-frost-light focus:outline-none;
+  }
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-status-success px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-card transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-status-success/40;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-status-warning px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-card transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-status-warning/40;
+  }
+
+  /* ---- Surfaces ---- */
+  .card {
+    @apply rounded-2xl border border-frost-mist/70 bg-white shadow-card;
+  }
+  .panel-navy {
+    @apply rounded-2xl bg-frost-navy text-white shadow-panel;
+  }
+
+  /* ---- Badges & tags ---- */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide;
+  }
+  .badge-navy {
+    @apply badge bg-frost-navy text-white;
+  }
+  .badge-blue {
+    @apply badge bg-blue-50 text-blue-700;
+  }
+  .badge-green {
+    @apply badge bg-emerald-50 text-emerald-700;
+  }
+  .badge-amber {
+    @apply badge bg-amber-50 text-amber-700;
+  }
+  .badge-red {
+    @apply badge bg-red-50 text-red-700;
+  }
+  .badge-gray {
+    @apply badge bg-frost-light text-frost-slate;
+  }
+  .tag-label {
+    @apply text-[10px] font-bold uppercase tracking-[0.14em] text-frost-steel;
+  }
+
+  /* ---- Forms ---- */
+  .field {
+    @apply w-full rounded-xl border border-frost-mist bg-white px-4 py-3 text-sm text-frost-deep shadow-sm transition focus:border-frost-navy/50 focus:outline-none focus:ring-2 focus:ring-frost-navy/15 disabled:bg-frost-light disabled:text-frost-slate;
+  }
+  .field-label {
+    @apply mb-2 block text-[11px] font-bold uppercase tracking-[0.14em] text-frost-steel;
+  }
+
+  /* ---- Tables ---- */
+  .table-head {
+    @apply border-b border-frost-mist bg-frost-surface/60 text-[10px] font-bold uppercase tracking-[0.12em] text-frost-steel;
+  }
+  .table-row {
+    @apply border-b border-frost-mist/50 transition hover:bg-frost-surface;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
