@@ -169,7 +169,7 @@ cd frontend && npm run build    # Production build → dist/
 ## Testing
 
 ```bash
-python3 -m pytest tests/ -v     # 51 tests, all passing
+python3 -m pytest tests/ -v     # 61 tests, all passing
 ```
 
 ## Docker
@@ -181,8 +181,9 @@ docker compose up --build       # Full stack on port 8000 (API) + 3000 (UI)
 ## Quality Gates
 
 - No `TODO`, `pass`, or `NotImplementedError` in main code paths
-- All 51 tests pass
+- All 61 tests pass
 - Frontend builds without errors (`tsc + vite build`)
 - CBK ECL parameters unchanged (validated)
 - No silent mock fallback when `MOCK_MODE=false`
+- PDF generation via WeasyPrint (requires system deps: `libpango`, `libcairo`, `libgdk-pixbuf`, `libffi` — included in Dockerfile). Falls back to HTML when WeasyPrint unavailable.
 - System deployable with real API keys and connectors

@@ -182,6 +182,14 @@ def run_compiler_agent(
             except ImportError:
                 logger.warning("WeasyPrint not installed — skipping PDF generation")
                 result.errors.append("PDF generation skipped: WeasyPrint not installed")
+            except OSError as e:
+                logger.warning("WeasyPrint system dependencies missing — skipping PDF: %s", e)
+                result.errors.append(f"PDF generation skipped: system dependencies missing ({str(e)[:120]})")
+                # Fall back: save HTML as the output document
+                html_fallback = os.path.join(output_dir, f"memo_{memo_id}.html")
+                if os.path.exists(html_fallback):
+                    result.file_size_bytes = os.path.getsize(html_fallback)
+                    logger.info("CompilerAgent: HTML fallback saved at %s", html_fallback)
             except Exception as e:
                 logger.error("CompilerAgent: PDF generation failed: %s", e)
                 result.errors.append(f"PDF generation failed: {str(e)[:200]}")

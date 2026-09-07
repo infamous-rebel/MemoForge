@@ -163,6 +163,10 @@ export interface EscalationItem {
   escalation_level: number;
   escalation_reason: string;
   sla_breach_pct: number;
+  stage?: string;
+  level?: string;
+  recipient?: string;
+  status?: string;
   created_at: string;
   resolved_at: string | null;
 }

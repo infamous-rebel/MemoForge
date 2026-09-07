@@ -167,16 +167,39 @@ def _user_to_dict(u: UserAccount) -> Dict[str, Any]:
 
 
 def _escalation_to_dict(e: Escalation, client_name: Optional[str] = None) -> Dict[str, Any]:
+    # Compute SLA breach percentage from timestamp and sla_deadline
+    sla_breach_pct = 0.0
+    if e.timestamp and e.sla_deadline:
+        ts = e.timestamp
+        dl = e.sla_deadline
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        if dl.tzinfo is None:
+            dl = dl.replace(tzinfo=timezone.utc)
+        total_sla_seconds = (dl - ts).total_seconds()
+        if total_sla_seconds > 0:
+            elapsed = (datetime.now(timezone.utc) - ts).total_seconds()
+            sla_breach_pct = round((elapsed / total_sla_seconds) * 100, 1)
+
+    # Map level string to numeric escalation level
+    _level_map = {"remind": 1, "notice": 2, "escalate_to_manager": 3, "escalate_to_admin": 4}
+    escalation_level = _level_map.get(e.level, 1) if isinstance(e.level, str) else 1
+
     return {
         "id": e.id,
         "memo_id": e.memo_id,
         "client_name": client_name,
+        "escalation_level": escalation_level,
+        "escalation_reason": e.stage,
+        "sla_breach_pct": sla_breach_pct,
         "stage": e.stage,
         "level": e.level,
         "recipient": e.recipient,
         "status": e.status,
         "sla_deadline": e.sla_deadline.isoformat() if e.sla_deadline else None,
+        "created_at": e.timestamp.isoformat() if e.timestamp else None,
         "timestamp": e.timestamp.isoformat() if e.timestamp else None,
+        "resolved_at": e.resolved_at.isoformat() if e.resolved_at else None,
     }
 
 
@@ -634,7 +657,12 @@ def finalize(
             ratios=ratios,
             output_dir="output",
         )
+        # Prefer PDF path; fall back to HTML if PDF generation was skipped
         memo.output_file_path = compiler_result.pdf_path
+        if not memo.output_file_path and compiler_result.html_content:
+            memo.output_file_path = f"output/memo_{memo.id}.html"
+        if compiler_result.errors:
+            logger.info("Compiler warnings for memo %s: %s", memo.id, compiler_result.errors)
     except Exception as e:
         logger.warning("Compiler failed: %s", e)
 
@@ -833,7 +861,7 @@ def mark_notification_read(
 @router.get("/escalations")
 def list_escalations(
     db: Session = Depends(get_db),
-    user: UserIdentity = Depends(require_roles("Admin", "Risk", "CreditCommittee")),
+    user: UserIdentity = Depends(require_roles("RM", "Admin", "Risk", "CreditCommittee")),
 ):
     """List active escalations with client context."""
     escalations = get_active_escalations(db)

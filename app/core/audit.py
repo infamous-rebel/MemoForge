@@ -40,6 +40,10 @@ def _compute_hash(
     previous_hash: Optional[str],
 ) -> str:
     """Compute SHA-256 hash of the audit entry fields."""
+    # Normalize timestamp: ensure timezone-aware (UTC) for consistent hashing.
+    # SQLite strips tzinfo, so we must re-attach UTC when reading back.
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
     data = {
         "action": action,
         "user_id": user_id,
@@ -90,7 +94,7 @@ def record_event(
         The created AuditLog entry.
     """
     now = datetime.now(timezone.utc)
-    previous_hash = _get_last_hash(db, memo_id)
+    previous_hash = _get_last_hash(db)
 
     entry_hash = _compute_hash(
         action=action,

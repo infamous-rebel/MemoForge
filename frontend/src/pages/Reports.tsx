@@ -68,14 +68,18 @@ export default function Reports() {
   const totalPipeline = pipelineStatus.reduce((s, p) => s + p.value, 0);
 
   // Use escalations as SLA violations
-  const slaViolations = escalations.map((e) => ({
-    type: e.sla_breach_pct > 100 ? "CRITICAL BREACH" : "WARNING",
-    memoId: e.memo_id,
-    stage: e.escalation_reason,
-    assignedTo: "Risk Manager",
-    delay: `${Math.round(e.sla_breach_pct)}%`,
-    action: e.sla_breach_pct > 100 ? "ESCALATE" : "REVIEW",
-  }));
+  const slaViolations = escalations.map((e) => {
+    const breachPct = typeof e.sla_breach_pct === "number" && !isNaN(e.sla_breach_pct) ? e.sla_breach_pct : 0;
+    const delayLabel = breachPct > 0 ? `+${Math.round(breachPct)}%` : "—";
+    return {
+      type: breachPct > 100 ? "CRITICAL BREACH" as const : "WARNING" as const,
+      memoId: e.memo_id,
+      stage: e.escalation_reason || e.stage || "—",
+      assignedTo: "Risk Manager",
+      delay: delayLabel,
+      action: breachPct > 100 ? "ESCALATE" as const : "REVIEW" as const,
+    };
+  });
 
   const approvalDelays = slaViolations; // Same data for now
   const logs = tab === "SLA VIOLATIONS" ? slaViolations : approvalDelays;
@@ -168,7 +172,7 @@ export default function Reports() {
         <div className="card flex flex-col justify-center p-6">
           <p className="text-xs font-bold uppercase tracking-wider text-frost-steel">SLA Breach Risk</p>
           <p className="mt-3 font-display text-5xl font-bold text-status-warning">
-            {report && totalPipeline > 0
+            {report && totalPipeline > 0 && !isNaN(escalations.length)
               ? `${Math.round((escalations.length / totalPipeline) * 100)}%`
               : "0%"}
           </p>
@@ -178,7 +182,7 @@ export default function Reports() {
               className="h-full rounded-full bg-status-warning"
               style={{
                 width: report && totalPipeline > 0
-                  ? `${(escalations.length / totalPipeline) * 100}%`
+                  ? `${Math.min((escalations.length / totalPipeline) * 100, 100)}%`
                   : "0%",
               }}
             />
@@ -189,12 +193,12 @@ export default function Reports() {
         <div className="card flex flex-col justify-center p-6">
           <p className="text-xs font-bold uppercase tracking-wider text-frost-steel">Avg. Approval Time</p>
           <p className="mt-3 font-display text-5xl font-bold text-frost-navy">
-            {report?.summary?.avg_approval_hours
+            {report?.summary?.avg_approval_hours && !isNaN(report.summary.avg_approval_hours)
               ? `${(report.summary.avg_approval_hours / 24).toFixed(1)}d`
               : "—"}
           </p>
           <p className="mt-2 text-sm text-frost-slate">Target: 3.5 days</p>
-          {report?.summary?.avg_approval_hours && report.summary.avg_approval_hours > 84 && (
+          {report?.summary?.avg_approval_hours && !isNaN(report.summary.avg_approval_hours) && report.summary.avg_approval_hours > 84 && (
             <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-status-warning">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
