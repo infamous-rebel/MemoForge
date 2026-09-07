@@ -5,6 +5,7 @@ import type {
   AuditLogEntry,
   ReportSummary,
   GenerateMemoRequest,
+  GenerateMemoResponse,
   MemoListItem,
   NotificationItem,
   EscalationItem,
@@ -43,8 +44,8 @@ export async function login(username: string, password: string): Promise<TokenRe
 }
 
 // --- Memos ---
-export async function generateMemo(req: GenerateMemoRequest): Promise<Memo> {
-  return request<Memo>("/generate-memo", {
+export async function generateMemo(req: GenerateMemoRequest): Promise<GenerateMemoResponse> {
+  return request<GenerateMemoResponse>("/generate-memo", {
     method: "POST",
     body: JSON.stringify(req),
   });
@@ -100,8 +101,19 @@ export async function notifyMemo(id: string): Promise<unknown> {
 }
 
 // --- ECL ---
-export async function computeECL(): Promise<ECLResult> {
-  return request<ECLResult>("/risk/ecl", { method: "POST" });
+export async function computeECL(params?: {
+  portfolio_size?: number;
+  total_gross_financing?: number;
+  npl_ratio?: number;
+}): Promise<ECLResult> {
+  return request<ECLResult>("/risk/ecl", {
+    method: "POST",
+    body: JSON.stringify({
+      portfolio_size: params?.portfolio_size ?? 200,
+      total_gross_financing: params?.total_gross_financing ?? 4_150_000_000,
+      npl_ratio: params?.npl_ratio ?? 0.0145,
+    }),
+  });
 }
 
 // --- Audit ---

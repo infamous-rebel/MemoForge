@@ -66,12 +66,25 @@ export interface AuditLogEntry {
 
 export interface ECLResult {
   total_ecl: number;
-  stage_1_ecl: number;
-  stage_2_ecl: number;
-  stage_3_ecl: number;
-  facility_count: number;
-  weighted_pd: number;
-  weighted_lgd: number;
+  stage1_ecl: number;
+  stage2_ecl: number;
+  stage3_ecl: number;
+  provision_coverage_ratio: number;
+  stage_breakdown: Array<{
+    stage: number;
+    facility_count: number;
+    total_ead: number;
+    total_ecl: number;
+    facilities: Array<{
+      facility_id: string;
+      stage: number;
+      ead: number;
+      pd: number;
+      lgd: number;
+      ecl: number;
+      rules_applied: string[];
+    }>;
+  }>;
 }
 
 export interface GenerateMemoRequest {
@@ -79,6 +92,20 @@ export interface GenerateMemoRequest {
   client_name: string;
   facility_type: string;
   deal_value: number;
+}
+
+export interface GenerateMemoResponse {
+  memo_id: string;
+  status: string;
+  sections: Array<{
+    section_key: string;
+    title: string;
+    review_status: string;
+    requires_review: boolean;
+    review_reason: string;
+    auto_approved_rule: string | null;
+  }>;
+  workflow_stage: string;
 }
 
 export interface ReportSummary {

@@ -48,14 +48,14 @@ export default function GenerateMemo() {
     if (step === 3 && running && agentProgress >= PIPELINE_AGENTS.length) {
       const t = window.setTimeout(async () => {
         try {
-          const memo = await generateMemo({
+          const res = await generateMemo({
             client_id: client.id,
             client_name: client.name,
             facility_type: facilityType.toLowerCase(),
             deal_value: dealValue,
           });
           push("Memo generated — routed for review.", "success");
-          navigate(`/review/${memo.id}`);
+          navigate(`/review/${res.memo_id}`);
         } catch {
           push("Pipeline complete. Opening review workspace.", "success");
           navigate("/review/MEM-2026-081");

@@ -68,12 +68,12 @@ export default function ECLDashboard() {
     ? {
         memoforgeEcl: eclData.total_ecl,
         stages: [
-          { name: "Stage 1", label: "Low Risk", value: eclData.stage_1_ecl, facilities: Math.round(eclData.facility_count * 0.6) },
-          { name: "Stage 2", label: "Inc. Risk", value: eclData.stage_2_ecl, facilities: Math.round(eclData.facility_count * 0.25) },
-          { name: "Stage 3", label: "Impaired", value: eclData.stage_3_ecl, facilities: Math.round(eclData.facility_count * 0.15) },
+          { name: "Stage 1", label: "Low Risk", value: eclData.stage1_ecl, facilities: eclData.stage_breakdown[0]?.facility_count ?? Math.round(200 * 0.6) },
+          { name: "Stage 2", label: "Inc. Risk", value: eclData.stage2_ecl, facilities: eclData.stage_breakdown[1]?.facility_count ?? Math.round(200 * 0.25) },
+          { name: "Stage 3", label: "Impaired", value: eclData.stage3_ecl, facilities: eclData.stage_breakdown[2]?.facility_count ?? Math.round(200 * 0.15) },
         ],
-        provisionCoverage: eclData.total_ecl / (eclData.weighted_pd * eclData.weighted_lgd * 1000000 || 1),
-        totalExposure: 48_600_000, // Mock for now
+        provisionCoverage: eclData.provision_coverage_ratio / 100,
+        totalExposure: eclData.stage_breakdown.reduce((s, b) => s + b.total_ead, 0),
       }
     : null;
 
@@ -229,10 +229,10 @@ export default function ECLDashboard() {
             </div>
             <div className="rounded-xl bg-gold/10 px-4 py-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-frost-steel">
-                Weighted PD
+                Provision Coverage
               </p>
               <p className="mt-1 font-display text-lg font-bold text-frost-navy">
-                {eclData ? `${(eclData.weighted_pd * 100).toFixed(2)}%` : "—"}
+                {eclData ? `${eclData.provision_coverage_ratio.toFixed(2)}%` : "—"}
               </p>
             </div>
             <p className="col-span-2 text-xs text-frost-slate">
@@ -271,29 +271,31 @@ export default function ECLDashboard() {
                 </thead>
                 <tbody>
                   {eclData ? (
-                    Array.from({ length: Math.min(eclData.facility_count, 10) }).map((_, idx) => (
-                      <tr key={idx} className="table-row">
-                        <td className="px-6 py-4 font-mono text-xs font-semibold text-frost-navy">FAC-{String(idx + 1).padStart(3, "0")}</td>
-                        <td className="px-4 py-4 font-semibold text-frost-deep">Sample Client {idx + 1}</td>
-                        <td className="px-4 py-4 text-frost-slate">Murabaha</td>
-                        <td className="px-4 py-4 text-right font-mono text-xs text-frost-deep">
-                          {(1_000_000 + idx * 250_000).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className={stageBadge[idx < 6 ? 1 : idx < 9 ? 2 : 3]}>Stage {idx < 6 ? 1 : idx < 9 ? 2 : 3}</span>
-                        </td>
-                        <td className="px-4 py-4 text-right font-mono text-xs">
-                          {(1.2 + idx * 0.3).toFixed(1)}%
-                        </td>
-                        <td className="px-4 py-4 text-right font-mono text-xs">
-                          {30 + idx * 2}%
-                        </td>
-                        <td className="px-4 py-4 text-right font-mono text-xs font-bold text-frost-navy">
-                          {formatKD(10_000 + idx * 5_000)}
-                        </td>
-                        <td className="px-6 py-4 text-xs text-frost-slate">CBK-validated</td>
-                      </tr>
-                    ))
+                    eclData.stage_breakdown.flatMap((stage) =>
+                      stage.facilities.slice(0, 4).map((fac, idx) => (
+                        <tr key={fac.facility_id} className="table-row">
+                          <td className="px-6 py-4 font-mono text-xs font-semibold text-frost-navy">{fac.facility_id}</td>
+                          <td className="px-4 py-4 font-semibold text-frost-deep">Sample Client {idx + 1}</td>
+                          <td className="px-4 py-4 text-frost-slate">Murabaha</td>
+                          <td className="px-4 py-4 text-right font-mono text-xs text-frost-deep">
+                            {Math.round(fac.ead).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <span className={stageBadge[fac.stage]}>Stage {fac.stage}</span>
+                          </td>
+                          <td className="px-4 py-4 text-right font-mono text-xs">
+                            {(fac.pd * 100).toFixed(1)}%
+                          </td>
+                          <td className="px-4 py-4 text-right font-mono text-xs">
+                            {(fac.lgd * 100).toFixed(0)}%
+                          </td>
+                          <td className="px-4 py-4 text-right font-mono text-xs font-bold text-frost-navy">
+                            {formatKD(fac.ecl)}
+                          </td>
+                          <td className="px-6 py-4 text-xs text-frost-slate">{fac.rules_applied[0] || "CBK-validated"}</td>
+                        </tr>
+                      ))
+                    )
                   ) : null}
                 </tbody>
                 <tfoot>

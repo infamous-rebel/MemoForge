@@ -939,7 +939,7 @@ def get_global_audit_log(
 @router.post("/risk/ecl")
 def compute_ecl_endpoint(
     request: ECLRequest,
-    user: UserIdentity = Depends(require_roles("Admin", "Risk", "CreditCommittee")),
+    user: UserIdentity = Depends(require_roles("RM", "Admin", "Risk", "CreditCommittee")),
 ):
     """Compute ECL for a synthetic portfolio."""
     from app.risk.ecl_engine import compute_ecl

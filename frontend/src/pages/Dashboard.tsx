@@ -124,9 +124,9 @@ export default function Dashboard() {
 
   const eclPie = eclData
     ? [
-        { name: "Stage 1", label: "Low Risk", value: eclData.stage_1_ecl },
-        { name: "Stage 2", label: "Inc. Risk", value: eclData.stage_2_ecl },
-        { name: "Stage 3", label: "Impaired", value: eclData.stage_3_ecl },
+        { name: "Stage 1", label: "Low Risk", value: eclData.stage1_ecl },
+        { name: "Stage 2", label: "Inc. Risk", value: eclData.stage2_ecl },
+        { name: "Stage 3", label: "Impaired", value: eclData.stage3_ecl },
       ]
     : [];
 
@@ -434,7 +434,7 @@ export default function Dashboard() {
                 <div className="rounded-xl bg-gold/10 px-4 py-3">
                   <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-frost-steel">Facilities</p>
                   <p className="mt-1 font-display text-lg font-bold text-frost-navy">
-                    {eclData.facility_count}
+                    {eclData.stage_breakdown.reduce((s, b) => s + b.facility_count, 0)}
                   </p>
                 </div>
               </div>
