@@ -254,8 +254,8 @@ export default function Reports() {
                   </td>
                 </tr>
               ) : (
-                logs.map((l) => (
-                  <tr key={`${l.memoId}-${l.type}`} className="table-row">
+                logs.map((l, idx) => (
+                  <tr key={`${l.memoId}-${l.type}-${idx}`} className="table-row">
                     <td className="px-6 py-4">
                       <span className={`badge ${violationBadge[l.type]}`}>{l.type}</span>
                     </td>

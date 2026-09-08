@@ -364,10 +364,13 @@ export default function Dashboard() {
                     <p className="mt-1 text-sm font-semibold text-frost-deep">
                       {selected.sla_status || "On Track"}
                     </p>
-                    {selected.sla_hours_remaining !== null && (
+                    {selected.sla_hours_remaining !== null && !isNaN(selected.sla_hours_remaining) && (
                       <p className="mt-0.5 text-xs text-frost-slate">
                         {Math.round(selected.sla_hours_remaining)}h remaining
                       </p>
+                    )}
+                    {(selected.sla_hours_remaining === null || isNaN(selected.sla_hours_remaining)) && (
+                      <p className="mt-0.5 text-xs text-frost-slate">—</p>
                     )}
                   </div>
                 </div>

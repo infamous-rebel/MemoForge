@@ -168,5 +168,22 @@
       "amount_pct": 0.02,
       "ratio_pct": 0.05
     }
+  },
+
+  "ecl_shariah": {
+    "profit_margin_rate_by_type": {
+      "murabaha": 0.10,
+      "tawarruq": 0.08,
+      "ijara": 0.05,
+      "musharakah": 0.0,
+      "sukuk": 0.0
+    },
+    "asset_recovery_rate_by_type": {
+      "ijara": 0.70,
+      "musharakah": 0.60,
+      "murabaha": 0.0,
+      "tawarruq": 0.0,
+      "sukuk": 0.0
+    }
   }
 }

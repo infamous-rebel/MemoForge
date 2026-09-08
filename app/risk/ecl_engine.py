@@ -85,6 +85,11 @@ class Facility:
     seniority: str = "senior"  # senior, subordinated
     maturity_years: float = 5.0
     is_defaulted: bool = False
+    # Shariah-native ECL fields (Warba Bank dual-prerogative alignment)
+    profit_margin: float = 0.0          # Unearned profit portion of gross exposure (stripped from EAD)
+    asset_recovery_rate: float = 0.0    # Expected recovery % of tangible asset (for Ijara/Musharaka)
+    penalty_amount: float = 0.0         # Gharamah – excluded from income/cash flows
+    shariah_non_compliant: bool = False # Triggers Stage 2 SICR
 
 
 @dataclass
@@ -254,6 +259,11 @@ def _determine_stage(facility: Facility, params: Dict) -> tuple:
             rules.append(f"stage3_due_to_{facility.days_past_due}_dpd")
         return 3, rules
 
+    # Stage 2: Shariah non-compliance flag (takes precedence over DPD/rating)
+    if facility.shariah_non_compliant:
+        rules.append("stage2_shariah_non_compliant")
+        return 2, rules
+
     # Stage 2: Significant increase in credit risk (SICR)
     # Criterion 1: 30+ DPD
     if facility.days_past_due >= params["stage2_dpd_threshold"]:
@@ -280,8 +290,26 @@ def _determine_stage(facility: Facility, params: Dict) -> tuple:
 
 
 def _compute_ead(facility: Facility, params: Dict) -> tuple:
-    """Compute Exposure at Default."""
+    """Compute Exposure at Default with Shariah-native adjustments.
+
+    For Murabaha/Ijara/Tawarruq: subtract profit_margin from gross exposure
+    before applying CCF (unearned profit is stripped from the EAD base).
+    For Musharaka/Sukuk: use gross exposure directly (no profit stripping).
+    Penalty amounts (Gharamah) are always excluded from EAD.
+    """
     rules = []
+
+    # Shariah-native: strip unearned profit margin for applicable contract types
+    profit_strip_types = {"murabaha", "ijara", "tawarruq"}
+    adjusted_gross = facility.gross_exposure
+    if facility.facility_type.lower() in profit_strip_types and facility.profit_margin > 0:
+        adjusted_gross = max(0, facility.gross_exposure - facility.profit_margin)
+        rules.append(f"profit_margin_stripped={facility.profit_margin:.2f}_type={facility.facility_type}")
+
+    # Exclude penalty (Gharamah) from EAD — not recognised as income
+    if facility.penalty_amount > 0:
+        adjusted_gross = max(0, adjusted_gross - facility.penalty_amount)
+        rules.append("penalty_excluded_from_ead")
 
     if facility.utilized_amount > 0 or facility.unutilized_amount > 0:
         # EAD = Utilized + (Unutilized * CCF)
@@ -291,11 +319,17 @@ def _compute_ead(facility: Facility, params: Dict) -> tuple:
         ccf_util = params["ccf_utilized"]
         ccf_unutil = params.get("ccf_unutilized_cash", 0.20)
 
+        # Scale utilized proportionally if profit was stripped
+        if facility.gross_exposure > 0 and adjusted_gross != facility.gross_exposure:
+            scale = adjusted_gross / facility.gross_exposure
+            utilized = utilized * scale
+            unutilized = unutilized * scale
+
         ead = (utilized * ccf_util) + (unutilized * ccf_unutil)
         rules.append(f"ead_computed_utilized_ccf={ccf_util}_unutilized_ccf={ccf_unutil}")
     else:
-        # Use gross exposure directly
-        ead = facility.gross_exposure
+        # Use adjusted gross exposure directly
+        ead = adjusted_gross
         rules.append("ead_equals_gross_exposure")
 
     return ead, rules
@@ -339,6 +373,11 @@ def _compute_lgd(facility: Facility, stage: int, ead: float, params: Dict) -> tu
     third element of the tuple. The ECL calculation should use net_exposure
     instead of EAD for Stage 3 facilities.
 
+    Shariah-native adjustments:
+    - Ijara/Musharaka with asset_recovery_rate > 0: LGD = 1 - asset_recovery_rate
+      (after applying CBK haircut to eligible collateral). Rule: "asset_based_lgd".
+    - Murabaha/Tawarruq: standard LGD floors (50% senior / 75% sub).
+
     Returns:
         Tuple of (lgd, rules, net_exposure). net_exposure equals ead for
         non-Stage-3 facilities.
@@ -362,7 +401,31 @@ def _compute_lgd(facility: Facility, stage: int, ead: float, params: Dict) -> tu
 
         return lgd, rules, net_exposure
 
-    # Stage 1 & 2: Apply LGD floor
+    # Shariah-native: asset-based LGD for Ijara/Musharaka
+    asset_based_types = {"ijara", "musharakah"}
+    if facility.facility_type.lower() in asset_based_types and facility.asset_recovery_rate > 0:
+        # LGD based on tangible asset recovery rather than conventional LGD floors
+        recovery = facility.asset_recovery_rate
+        # Apply CBK collateral haircut to eligible collateral portion
+        if facility.collateral_value > 0 and facility.gross_exposure > 0:
+            haircut = params["collateral_haircuts"].get(facility.collateral_type, 0.40)
+            eligible_collateral = facility.collateral_value * (1 - haircut)
+            collateral_coverage = eligible_collateral / facility.gross_exposure
+            # Blend asset recovery with collateral benefit
+            effective_lgd = (1 - recovery) * (1 - min(collateral_coverage, 0.8))
+        else:
+            effective_lgd = 1 - recovery
+        # Apply CBK floor as minimum
+        if facility.seniority == "subordinated":
+            lgd_floor = params["lgd_floor_subordinated"]
+        else:
+            lgd_floor = params["lgd_floor_senior"]
+        lgd = max(effective_lgd, lgd_floor)
+        rules.append(f"asset_based_lgd_recovery={recovery}_type={facility.facility_type}")
+        rules.append("lgd_floor_senior" if facility.seniority != "subordinated" else "lgd_floor_subordinated")
+        return lgd, rules, ead
+
+    # Stage 1 & 2: Apply LGD floor (standard path for Murabaha/Tawarruq/Sukuk)
     if facility.seniority == "subordinated":
         lgd_floor = params["lgd_floor_subordinated"]
         rules.append("lgd_floor_subordinated")

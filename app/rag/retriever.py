@@ -103,7 +103,7 @@ def _vector_search(
         acl_conditions = []
         for group in rm_acl_groups:
             acl_conditions.append(
-                Chunk.acl_groups.contains([group])
+                Chunk.acl_groups.contains(group)
             )
         if acl_conditions:
             q = q.filter(or_(*acl_conditions))
@@ -172,7 +172,7 @@ def _keyword_search(
         acl_conditions = []
         for group in rm_acl_groups:
             acl_conditions.append(
-                Chunk.acl_groups.contains([group])
+                Chunk.acl_groups.contains(group)
             )
         if acl_conditions:
             q = q.filter(or_(*acl_conditions))
@@ -234,7 +234,7 @@ def retrieve_all_for_client(
         acl_conditions = []
         for group in rm_acl_groups:
             acl_conditions.append(
-                Chunk.acl_groups.contains([group])
+                Chunk.acl_groups.contains(group)
             )
         if acl_conditions:
             q = q.filter(or_(*acl_conditions))

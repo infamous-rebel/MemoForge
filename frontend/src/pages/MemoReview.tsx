@@ -33,7 +33,7 @@ export default function MemoReview() {
   const navigate = useNavigate();
   const { push } = useToast();
   const role = localStorage.getItem("role") || "RM";
-  const canApprove = ["RM", "Risk", "CreditCommittee", "ShariahBoard"].includes(role);
+  const canApprove = ["RM", "Risk", "CreditCommittee", "ShariahBoard", "Admin"].includes(role);
 
   const [memo, setMemo] = useState<Memo | null>(null);
   const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([]);

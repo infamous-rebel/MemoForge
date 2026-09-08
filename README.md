@@ -101,6 +101,16 @@ All settings via environment variables (see `.env.example`):
 - Real Warba Bank parameters: 1% PD floor, 30+ DPD Stage 2 trigger, three-scenario weighting
 - Portfolio-level computation with per-facility audit trail
 
+### Shariah-Native ECL Adjustments
+
+The ECL engine aligns with Warba Bank's **dual-prerogative approach**: it calculates ECL under IFRS 9 in accordance with CBK guidelines, then takes the **higher of** IFRS 9 ECL or CBK provisioning rules. On top of this, the engine applies Shariah-specific adjustments:
+
+- **EAD — Profit margin stripping**: For Murabaha, Ijara, and Tawarruq contracts, the unearned profit portion is subtracted from gross exposure before applying CCF. Musharakah and Sukuk use gross exposure directly (no profit stripping). This reflects the Islamic finance principle that unearned profit is not part of the credit risk exposure.
+- **LGD — Asset-based recovery**: For Ijara and Musharakah facilities with a tangible `asset_recovery_rate`, LGD is computed as `1 - recovery_rate` (blended with CBK collateral haircuts), rather than using conventional LGD floors. This reflects the asset-backed nature of these contracts where the bank retains ownership of the underlying asset.
+- **Stage 2 SICR — Shariah non-compliance**: A `shariah_non_compliant` flag on a facility triggers an immediate Stage 2 classification (significant increase in credit risk), taking precedence over DPD and rating-downgrade triggers. This captures the additional risk from Shariah non-compliance events.
+- **Gharamah (penalty) exclusion**: Penalty amounts are excluded from EAD calculations, consistent with the principle that Gharamah is not recognised as income and is channelled to charity.
+- **Configuration**: Profit margin rates and asset recovery rates by facility type are defined in `config.json` under the `ecl_shariah` section.
+
 ### Shariah Compliance
 - 5 facility types: Murabaha, Ijara, Musharakah, Sukuk, Tawarruq
 - Required terms check (e.g., "cost-plus", "profit rate")
@@ -171,6 +181,44 @@ cd frontend && npm run build    # Production build → dist/
 ```bash
 python3 -m pytest tests/ -v     # 61 tests, all passing
 ```
+
+> **Note:** `.pytest_cache/` is excluded from version control via `.gitignore`.
+
+## Evaluation Framework
+
+MemoForge includes a built-in evaluation and benchmarking framework (`app/evaluation/`) that measures pipeline quality against a ground-truth corpus.
+
+### Metrics (8)
+
+| Metric | Description |
+|---|---|
+| `source_extraction_accuracy` | How faithfully data agents extract source fields |
+| `ratio_accuracy` | Computed financial ratios vs. ground truth |
+| `ecl_accuracy` | ECL figures vs. annotated expected values |
+| `shariah_classification` | Facility type and Shariah term correctness |
+| `citation_correctness` | Citation grounding accuracy |
+| `human_override_frequency` | Rate of human corrections to auto-generated content |
+| `final_memo_quality` | Overall memo quality score |
+| `processing_time` | End-to-end generation latency |
+
+### Corpus
+
+A seeded evaluation corpus lives in `data/evaluation/corpus/` with 10 benchmark cases. Each case contains:
+- `client_profile.json` — synthetic client data
+- `facility_details.json` — facility parameters
+- `reference_annotations.json` — ground-truth expected values
+
+### Running Evaluations
+
+```bash
+# Seed the corpus
+python3 -m app.scripts.seed_evaluation_corpus --cases 10
+
+# Run evaluation via API
+POST /v1/evaluation/run
+```
+
+The evaluation runner (`app/evaluation/runner.py`) operates in shadow mode — it runs the live pipeline against corpus entries and aggregates deltas against reference annotations without affecting production memos.
 
 ## Docker
 

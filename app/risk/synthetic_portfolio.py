@@ -121,6 +121,27 @@ def generate_synthetic_portfolio(
             utilized = exposure * util_ratio
             unutilized = exposure * (1 - util_ratio)
 
+            # Shariah-native fields
+            profit_margin = 0.0
+            asset_recovery_rate = 0.0
+            penalty_amount = 0.0
+            shariah_non_compliant = False
+
+            if ftype == "murabaha":
+                profit_margin = exposure * 0.10  # ~10% of gross exposure
+            elif ftype == "tawarruq":
+                profit_margin = exposure * 0.08
+            elif ftype == "ijara":
+                asset_recovery_rate = 0.70  # 70% tangible asset recovery
+
+            # A few facilities flagged for Shariah non-compliance (Stage 2 trigger)
+            if not is_defaulted and facility_idx % 25 == 7:
+                shariah_non_compliant = True
+
+            # A few facilities with penalty amounts (Gharamah excluded from EAD)
+            if not is_defaulted and facility_idx % 30 == 3:
+                penalty_amount = exposure * 0.02  # 2% penalty
+
             facility = Facility(
                 facility_id=f"SYN-{ftype[:3].upper()}-{facility_idx:04d}",
                 client_id=f"CLIENT-{(seed % 50) + 1:03d}",
@@ -139,6 +160,10 @@ def generate_synthetic_portfolio(
                 seniority="senior" if rng_val > 0.2 else "subordinated",
                 maturity_years=maturity,
                 is_defaulted=is_defaulted,
+                profit_margin=profit_margin,
+                asset_recovery_rate=asset_recovery_rate,
+                penalty_amount=penalty_amount,
+                shariah_non_compliant=shariah_non_compliant,
             )
             facilities.append(facility)
             facility_idx += 1

@@ -18,6 +18,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const role = localStorage.getItem("role");
+  if (role !== "Admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <ToastProvider>
@@ -40,7 +46,7 @@ export default function App() {
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/notifications" element={<NotificationCenter />} />
                   <Route path="/audit" element={<AuditLog />} />
-                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
                 </Routes>
               </Layout>
             </ProtectedRoute>
