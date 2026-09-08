@@ -1,0 +1,18 @@
+{
+  "client_id": "EVAL-0003",
+  "legal_name": "Evaluation Client 0003 W.L.L.",
+  "trade_name": "EvalClient-3",
+  "client_type": "corporate",
+  "sector": "healthcare",
+  "sub_sector": "private_hospital",
+  "risk_rating": "BBB+",
+  "rm_name": "rm_ahmad",
+  "financials": {
+    "net_operating_income": 21523182.91,
+    "total_debt_service": 42474824.29,
+    "total_liabilities": 258383453.35,
+    "total_equity": 106312207.02,
+    "current_assets": 47216480.41,
+    "current_liabilities": 21751822.19
+  }
+}

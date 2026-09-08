@@ -1,0 +1,18 @@
+{
+  "client_id": "EVAL-0004",
+  "legal_name": "Evaluation Client 0004 W.L.L.",
+  "trade_name": "EvalClient-4",
+  "client_type": "corporate",
+  "sector": "education",
+  "sub_sector": "private_university",
+  "risk_rating": "A-",
+  "rm_name": "rm_ahmad",
+  "financials": {
+    "net_operating_income": 25930608.44,
+    "total_debt_service": 51107022.49,
+    "total_liabilities": 188308134.4,
+    "total_equity": 88795169.18,
+    "current_assets": 82760689.72,
+    "current_liabilities": 40010285.87
+  }
+}

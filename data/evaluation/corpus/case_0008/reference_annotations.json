@@ -1,0 +1,36 @@
+{
+  "financials": {
+    "net_operating_income": 1701211.78,
+    "total_debt_service": 3940727.74,
+    "total_liabilities": 8469778.12,
+    "total_equity": 6207659.17,
+    "current_assets": 4678835.9,
+    "current_liabilities": 2721114.12
+  },
+  "ratios": {
+    "dscr": 0.43,
+    "leverage_ratio": 1.36,
+    "current_ratio": 1.72
+  },
+  "ecl": {
+    "stage1_ecl": 371.62,
+    "stage2_ecl": 2229.75,
+    "stage3_ecl": 2632.88,
+    "total_ecl": 5234.25
+  },
+  "facility_type": "murabaha",
+  "shariah_flags": [],
+  "expected_citations": [
+    "chunk_0008_000",
+    "chunk_0008_001",
+    "chunk_0008_002",
+    "chunk_0008_003",
+    "chunk_0008_004"
+  ],
+  "quality_scores": {
+    "clarity": 4.3,
+    "completeness": 4.7,
+    "accuracy": 4.6,
+    "compliance": 3.8
+  }
+}

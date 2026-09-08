@@ -1,0 +1,18 @@
+{
+  "client_id": "EVAL-0005",
+  "legal_name": "Evaluation Client 0005 W.L.L.",
+  "trade_name": "EvalClient-5",
+  "client_type": "corporate",
+  "sector": "oil_and_gas",
+  "sub_sector": "oilfield_services",
+  "risk_rating": "BBB",
+  "rm_name": "rm_ahmad",
+  "financials": {
+    "net_operating_income": 16419819.35,
+    "total_debt_service": 35909905.06,
+    "total_liabilities": 134696778.67,
+    "total_equity": 45726846.09,
+    "current_assets": 18842437.04,
+    "current_liabilities": 17444773.04
+  }
+}

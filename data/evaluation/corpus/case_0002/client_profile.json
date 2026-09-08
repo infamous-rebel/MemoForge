@@ -1,0 +1,18 @@
+{
+  "client_id": "EVAL-0002",
+  "legal_name": "Evaluation Client 0002 W.L.L.",
+  "trade_name": "EvalClient-2",
+  "client_type": "corporate",
+  "sector": "trading",
+  "sub_sector": "general_trading",
+  "risk_rating": "A-",
+  "rm_name": "rm_ahmad",
+  "financials": {
+    "net_operating_income": 36488872.37,
+    "total_debt_service": 34980129.07,
+    "total_liabilities": 112535340.52,
+    "total_equity": 221052768.59,
+    "current_assets": 51010842.12,
+    "current_liabilities": 28766513.63
+  }
+}
