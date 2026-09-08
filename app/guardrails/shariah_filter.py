@@ -42,6 +42,7 @@ class ShariahFlag:
             "flag_type": self.flag_type,
             "severity": self.severity,
             "suggestion": self.suggestion,
+            "detail": self.suggestion,
             "context": self.context,
         }
 
@@ -74,7 +75,20 @@ def check_shariah_compliance(
         terminology = get_shariah_terminology(facility_type)
     except ValueError as e:
         logger.warning("Unknown facility type for Shariah check: %s", e)
-        return []
+        # Return an error-severity flag to force human Shariah Board review
+        return [
+            ShariahFlag(
+                term=f"unknown_facility_type:{facility_type}",
+                flag_type="missing_required",
+                severity="error",
+                suggestion=(
+                    f"Facility type '{facility_type}' is not recognized. "
+                    f"Manual Shariah Board review is required before this content "
+                    f"can be approved."
+                ),
+                context="",
+            )
+        ]
 
     flags: List[ShariahFlag] = []
     content_lower = content.lower()

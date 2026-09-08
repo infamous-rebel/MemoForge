@@ -81,6 +81,11 @@ def should_auto_approve(
     """
     hitl = get_hitl_rules()
 
+    # 0. Sections that must NEVER be auto-approved (e.g., policy_exceptions)
+    never_auto = hitl.get("sections_never_auto_approve", [])
+    if section_key in never_auto:
+        return False, f"never_auto_approve_section:{section_key}"
+
     # 1. Always review specific facility types (e.g., sukuk)
     if facility_type in hitl.get("always_review_facility_types", []):
         return False, f"required_review_facility_type:{facility_type}"

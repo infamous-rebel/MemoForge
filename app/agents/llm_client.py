@@ -338,15 +338,7 @@ def _generate_mock_narrative(prompt: str) -> str:
             "Management has demonstrated prudent financial management with adequate liquidity "
             "buffers and manageable leverage levels. [ref:chunk_002]"
         )
-    elif "financial" in prompt_lower:
-        return (
-            "Financial analysis indicates the borrower maintains healthy credit metrics. "
-            "The Debt Service Coverage Ratio (DSCR) stands at 1.45x, well above the bank's "
-            "minimum threshold of 1.2x. [ref:chunk_003] Leverage ratio of 2.1x is within "
-            "acceptable limits (maximum 3.0x). Current ratio of 1.8x demonstrates adequate "
-            "short-term liquidity. [ref:chunk_004]"
-        )
-    elif "risk" in prompt_lower:
+    elif "risk" in prompt_lower or "policy" in prompt_lower or "recommendation" in prompt_lower:
         return (
             "Key risks identified include concentration in the Kuwaiti real estate sector "
             "and moderate leverage levels. However, these are mitigated by strong collateral "
@@ -354,6 +346,14 @@ def _generate_mock_narrative(prompt: str) -> str:
             "[ref:chunk_005] The facility is structured as a Murabaha with appropriate "
             "profit rate and deferred payment terms compliant with Shariah principles. "
             "[ref:chunk_006]"
+        )
+    elif "financial" in prompt_lower:
+        return (
+            "Financial analysis indicates the borrower maintains healthy credit metrics. "
+            "The Debt Service Coverage Ratio (DSCR) stands at 1.45x, well above the bank's "
+            "minimum threshold of 1.2x. [ref:chunk_003] Leverage ratio of 2.1x is within "
+            "acceptable limits (maximum 3.0x). Current ratio of 1.8x demonstrates adequate "
+            "short-term liquidity. [ref:chunk_004]"
         )
     return (
         "Based on the available data and analysis, the facility request is assessed as "

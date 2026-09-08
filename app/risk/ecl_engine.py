@@ -171,13 +171,16 @@ def compute_ecl(
         pd, pd_rules = _compute_pd(facility, stage, params)
 
         # Step 4: Compute LGD (with floor and collateral haircuts)
-        lgd, lgd_rules = _compute_lgd(facility, stage, params)
+        # For Stage 3, also returns net_exposure after collateral haircut
+        lgd, lgd_rules, net_exposure = _compute_lgd(facility, stage, ead, params)
 
         # Step 5: Three-scenario ECL
+        # Stage 3 uses net_exposure (after collateral) instead of EAD
+        exposure = net_exposure if stage == 3 else ead
         ecl = 0.0
         for scenario, weight in weights.items():
             scenario_pd = pd * pd_mults.get(scenario, 1.0)
-            scenario_ecl = ead * scenario_pd * lgd * weight
+            scenario_ecl = exposure * scenario_pd * lgd * weight
             ecl += scenario_ecl
 
         rules = stage_rules + ead_rules + pd_rules + lgd_rules
@@ -329,17 +332,26 @@ def _compute_pd(facility: Facility, stage: int, params: Dict) -> tuple:
     return pd, rules
 
 
-def _compute_lgd(facility: Facility, stage: int, params: Dict) -> tuple:
-    """Compute Loss Given Default with floor and collateral haircuts."""
+def _compute_lgd(facility: Facility, stage: int, ead: float, params: Dict) -> tuple:
+    """Compute Loss Given Default with floor and collateral haircuts.
+
+    For Stage 3, returns net_exposure (after collateral haircut) as the
+    third element of the tuple. The ECL calculation should use net_exposure
+    instead of EAD for Stage 3 facilities.
+
+    Returns:
+        Tuple of (lgd, rules, net_exposure). net_exposure equals ead for
+        non-Stage-3 facilities.
+    """
     rules = []
 
     if stage == 3:
         # Stage 3: 100% LGD on net exposure after collateral
-        net_exposure = facility.gross_exposure
+        net_exposure = ead
         if facility.collateral_value > 0:
             haircut = params["collateral_haircuts"].get(facility.collateral_type, 0.40)
             eligible_collateral = facility.collateral_value * (1 - haircut)
-            net_exposure = max(0, facility.gross_exposure - eligible_collateral)
+            net_exposure = max(0, ead - eligible_collateral)
             rules.append(f"stage3_lgd_collateral_haircut={haircut}_eligible={eligible_collateral:.0f}")
 
         if net_exposure > 0:
@@ -348,7 +360,7 @@ def _compute_lgd(facility: Facility, stage: int, params: Dict) -> tuple:
             lgd = 0.0
             rules.append("stage3_fully_collateralized")
 
-        return lgd, rules
+        return lgd, rules, net_exposure
 
     # Stage 1 & 2: Apply LGD floor
     if facility.seniority == "subordinated":
@@ -370,7 +382,7 @@ def _compute_lgd(facility: Facility, stage: int, params: Dict) -> tuple:
         lgd = max(adjusted_lgd, lgd_floor)
         rules.append(f"collateral_adjustment_haircut={haircut}_coverage={collateral_coverage:.2f}")
 
-    return lgd, rules
+    return lgd, rules, ead
 
 
 # Rating scale for notch calculation

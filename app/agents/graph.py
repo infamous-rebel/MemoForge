@@ -103,9 +103,14 @@ def _step_validation(state: PipelineState, *, db: Session) -> PipelineState:
         "confidence": validation.confidence_score,
         "is_valid": validation.is_valid,
         "reason": validation.rejection_reason if not validation.is_valid else None,
+        "blocking": False,
     }
     if not validation.is_valid:
-        logger.warning("Pipeline: data validation confidence=%.2f", validation.confidence_score)
+        state.data_quality["blocking"] = True
+        logger.warning(
+            "Pipeline: data validation failed (confidence=%.2f) — auto-approval overridden",
+            validation.confidence_score,
+        )
     return state
 
 
@@ -217,6 +222,12 @@ def _step_approval(state: PipelineState, *, db: Session) -> PipelineState:
             facility_type=state.facility_type,
             deal_value=state.deal_value,
         )
+
+        # If data validation failed, override auto-approval to require review
+        data_blocking = state.data_quality.get("blocking", False)
+        if auto_approved and data_blocking:
+            auto_approved = False
+            rule = "required_review_data_validation_blocking"
 
         section = MemoSection(
             memo_id=memo.id,

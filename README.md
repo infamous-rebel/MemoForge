@@ -187,3 +187,10 @@ docker compose up --build       # Full stack on port 8000 (API) + 3000 (UI)
 - No silent mock fallback when `MOCK_MODE=false`
 - PDF generation via WeasyPrint (requires system deps: `libpango`, `libcairo`, `libgdk-pixbuf`, `libffi` — included in Dockerfile). Falls back to HTML when WeasyPrint unavailable.
 - System deployable with real API keys and connectors
+
+## Known Limitations
+
+- **ECL in memo pipeline**: The ECL figures in the memo pipeline use synthetic data for demonstration purposes. The ECL engine itself (`app/risk/ecl_engine.py`) is validated separately with CBK/IFRS 9 parameters.
+- **Integration connectors**: Real CRM/Core Banking/Market Data connectors are currently mock adapters returning realistic synthetic data. Real bank API integrations are planned for production deployment.
+- **Vector store**: The current implementation uses JSON-based TF-IDF embedding storage rather than pgvector. A pgvector-backed store is recommended for production scale.
+- **Generation time claim**: The "<1 hour generation" claim in marketing materials is architectural — no formal benchmark suite is included. Actual generation time depends on LLM provider latency and infrastructure.

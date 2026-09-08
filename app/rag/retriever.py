@@ -211,14 +211,33 @@ def retrieve_all_for_client(
     rm_acl_groups: Optional[List[str]] = None,
     limit: int = 50,
 ) -> List[RetrievedChunk]:
-    """Retrieve all chunks for a client (for data validation)."""
+    """Retrieve all chunks for a client (for data validation).
+
+    Applies ACL filtering when rm_acl_groups is provided to ensure
+    the caller only receives chunks they are authorized to access.
+    """
     from app.db.models import Chunk, Document
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    acl_enabled = settings.rag_acl_enabled
 
     q = (
         db.query(Chunk, Document)
         .join(Document, Chunk.document_id == Document.id)
         .filter(Chunk.client_id == client_id)
     )
+
+    # Apply ACL filter before returning results
+    if acl_enabled and rm_acl_groups:
+        from sqlalchemy import or_
+        acl_conditions = []
+        for group in rm_acl_groups:
+            acl_conditions.append(
+                Chunk.acl_groups.contains([group])
+            )
+        if acl_conditions:
+            q = q.filter(or_(*acl_conditions))
 
     rows = q.limit(limit).all()
     return [

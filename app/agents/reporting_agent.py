@@ -92,6 +92,24 @@ def generate_report(
         report.content = json.dumps(data, default=str, indent=2)
     elif report_format == "csv":
         report.content = _to_csv(data)
+    elif report_format == "pdf":
+        html_content = _to_html(data, report_type)
+        try:
+            import weasyprint
+            pdf_bytes = weasyprint.HTML(string=html_content).write_pdf()
+            report.content = pdf_bytes.hex()  # hex-encoded for JSON transport
+            report.format = "pdf"
+        except ImportError:
+            raise ValueError(
+                "PDF report generation requires WeasyPrint. "
+                "Install with: pip install weasyprint. "
+                "Alternatively, request report in 'json' or 'csv' format."
+            )
+        except OSError as e:
+            raise ValueError(
+                f"WeasyPrint system dependencies unavailable: {e}. "
+                "Install system deps (libpango, libcairo) or use 'json'/'csv' format."
+            )
     else:
         report.content = json.dumps(data, default=str, indent=2)
 
@@ -278,3 +296,33 @@ def _to_csv(data: Dict[str, Any]) -> str:
             writer.writerow([key, str(value)])
 
     return output.getvalue()
+
+
+def _to_html(data: Dict[str, Any], report_type: str) -> str:
+    """Convert report data to a simple HTML document for PDF rendering."""
+    title = report_type.replace("_", " ").title()
+    rows_html = ""
+    for key, value in data.items():
+        if isinstance(value, list):
+            if value and isinstance(value[0], dict):
+                headers = list(value[0].keys())
+                header_row = "".join(f"<th>{h}</th>" for h in headers)
+                body_rows = ""
+                for item in value:
+                    cells = "".join(f"<td>{item.get(h, '')}</td>" for h in headers)
+                    body_rows += f"<tr>{cells}</tr>\n"
+                rows_html += f"<h3>{key}</h3><table><thead><tr>{header_row}</tr></thead><tbody>{body_rows}</tbody></table>"
+            else:
+                rows_html += f"<h3>{key}</h3><ul>" + "".join(f"<li>{v}</li>" for v in value) + "</ul>"
+        elif not isinstance(value, dict):
+            rows_html += f"<p><strong>{key}:</strong> {value}</p>"
+
+    return (
+        f"<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<title>{title} Report</title>"
+        f"<style>body{{font-family:sans-serif;margin:2em}}"
+        f"table{{border-collapse:collapse;width:100%;margin:1em 0}}"
+        f"th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left;font-size:12px}}"
+        f"th{{background:#f0f0f0}}</style></head>"
+        f"<body><h1>{title} Report</h1>{rows_html}</body></html>"
+    )

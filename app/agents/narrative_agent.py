@@ -223,7 +223,7 @@ def _build_prompt(
         ),
         "risk_and_mitigants": (
             f"Write a professional Risk Assessment & Mitigants section.\n"
-            f"Client ID: {client_id}\n{ratio_section}\n"
+            f"Client ID: {client_id}\n"
             f"Identify key risks, assess their severity, and propose mitigants. "
             f"Consider collateral, guarantees, and covenants. "
             f"Use {facility_type} Islamic finance terminology. "
@@ -232,7 +232,7 @@ def _build_prompt(
         ),
         "policy_exceptions": (
             f"Write a Policy Exceptions section for the credit memo.\n"
-            f"Client ID: {client_id}\n{ratio_section}\n"
+            f"Client ID: {client_id}\n"
             f"Identify any policy exceptions, waivers, or deviations from standard "
             f"banking policy required for this facility. If none, state clearly that "
             f"no exceptions are required. Use {facility_type} terminology.\n\n"
@@ -242,7 +242,7 @@ def _build_prompt(
             f"Write a Recommendation section for the credit memo.\n"
             f"Client ID: {client_id}\n"
             f"Facility Type: {facility_type}\n"
-            f"Deal Value: KD {deal_value:,.0f}\n{ratio_section}\n"
+            f"Deal Value: KD {deal_value:,.0f}\n"
             f"Provide a clear recommendation (approve/decline/conditional) with "
             f"supporting rationale. Reference the key findings from the analysis. "
             f"Use {facility_type} Islamic finance terminology.\n\n"

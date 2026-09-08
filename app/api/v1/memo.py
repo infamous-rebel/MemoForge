@@ -621,11 +621,12 @@ def reject_section(
 def finalize(
     memo_id: str,
     db: Session = Depends(get_db),
-    user: UserIdentity = Depends(get_current_user),
+    user: UserIdentity = Depends(require_roles("CreditCommittee", "Admin")),
 ):
     """Finalize a memo — all sections must be approved.
 
-    Generates the final PDF/HTML output.
+    Generates the final PDF/HTML output. Only CreditCommittee and Admin
+    roles may finalize a memo.
     """
     try:
         memo = finalize_memo(db=db, memo_id=memo_id, user_id=user.user_id)
@@ -658,13 +659,28 @@ def finalize(
             output_dir="output",
         )
         # Prefer PDF path; fall back to HTML if PDF generation was skipped
-        memo.output_file_path = compiler_result.pdf_path
-        if not memo.output_file_path and compiler_result.html_content:
-            memo.output_file_path = f"output/memo_{memo.id}.html"
+        output_path = compiler_result.pdf_path
+        if not output_path and compiler_result.html_content:
+            output_path = f"output/memo_{memo.id}.html"
+        if not output_path:
+            # Compilation produced no artifact — do NOT finalize
+            raise HTTPException(
+                status_code=500,
+                detail="Memo finalization failed: compiler produced no output artifact (PDF/HTML). "
+                       "Memo status remains unchanged.",
+            )
+        memo.output_file_path = output_path
         if compiler_result.errors:
             logger.info("Compiler warnings for memo %s: %s", memo.id, compiler_result.errors)
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.warning("Compiler failed: %s", e)
+        logger.error("Compiler failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Memo finalization failed: compiler error — {str(e)[:300]}. "
+                   "Memo status remains unchanged.",
+        )
 
     # Notify
     try:
@@ -980,3 +996,34 @@ def compute_ecl_endpoint(
     )
     result = compute_ecl(portfolio)
     return result.to_dict()
+
+
+# =============================================================================
+# Evaluation & Benchmark Framework
+# =============================================================================
+
+class EvaluationRequest(BaseModel):
+    corpus_path: Optional[str] = Field(None, description="Override corpus directory path")
+    max_cases: Optional[int] = Field(None, ge=1, description="Limit number of cases to evaluate")
+
+
+@router.post("/evaluation/run")
+def run_evaluation_endpoint(
+    request: EvaluationRequest = EvaluationRequest(),
+    db: Session = Depends(get_db),
+    user: UserIdentity = Depends(require_roles("Admin")),
+):
+    """Run the shadow-mode evaluation benchmark.
+
+    Executes the full MemoForge pipeline against a corpus of test cases,
+    measures 8 quantitative metrics, and produces an auditable report.
+    Admin only.
+    """
+    from app.evaluation.runner import run_evaluation
+
+    report = run_evaluation(
+        db=db,
+        corpus_path=request.corpus_path,
+        max_cases=request.max_cases,
+    )
+    return report

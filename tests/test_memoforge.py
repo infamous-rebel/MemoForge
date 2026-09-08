@@ -134,7 +134,7 @@ class TestApprovalRules:
             "policy_exceptions", flags, "murabaha", 1_000_000
         )
         assert approved is False
-        assert rule == "required_review_flags_present"
+        assert rule == "never_auto_approve_section:policy_exceptions"
 
     def test_evaluate_risk_level(self):
         from app.core.approval_rules import evaluate_risk_level, SectionFlags

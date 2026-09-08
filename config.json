@@ -112,5 +112,61 @@
       "100": "escalate_to_manager",
       "125": "escalate_to_admin"
     }
+  },
+
+  "evaluation": {
+    "enabled": true,
+    "shadow_mode": true,
+    "metrics": {
+      "source_extraction_accuracy": {
+        "enabled": true,
+        "threshold": 0.90,
+        "weight": 0.15
+      },
+      "ratio_accuracy": {
+        "enabled": true,
+        "threshold": 0.95,
+        "weight": 0.20
+      },
+      "ecl_accuracy": {
+        "enabled": true,
+        "threshold": 0.85,
+        "weight": 0.20
+      },
+      "shariah_classification": {
+        "enabled": true,
+        "threshold": 0.95,
+        "weight": 0.20
+      },
+      "citation_correctness": {
+        "enabled": true,
+        "threshold": 0.98,
+        "weight": 0.15
+      },
+      "human_override_frequency": {
+        "enabled": true,
+        "max_override_rate": 0.20,
+        "weight": 0.05
+      },
+      "final_memo_quality": {
+        "enabled": true,
+        "threshold": 0.85,
+        "weight": 0.05
+      },
+      "processing_time": {
+        "enabled": true,
+        "max_seconds": 300,
+        "weight": 0.00
+      }
+    },
+    "dataset": {
+      "path": "data/evaluation/corpus/",
+      "cases": 100,
+      "refresh_on_start": false
+    },
+    "tolerances": {
+      "amount_pct": 0.02,
+      "ratio_pct": 0.05
+    }
   }
 }

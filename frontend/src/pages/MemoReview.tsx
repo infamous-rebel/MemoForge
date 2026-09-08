@@ -74,28 +74,28 @@ export default function MemoReview() {
       ]
     : [];
 
-  const handleApprove = async (sectionTitle: string) => {
+  const handleApprove = async (sectionKey: string) => {
     try {
-      await approveSection(memoId ?? "", sectionTitle, comments[sectionTitle] ?? "");
-      push(`Section "${sectionTitle}" approved.`, "success");
+      await approveSection(memoId ?? "", sectionKey, comments[sectionKey] ?? "");
+      push(`Section approved.`, "success");
+      setApproved((prev) => ({ ...prev, [sectionKey]: true }));
+      setRejected((prev) => ({ ...prev, [sectionKey]: false }));
+      setComments((prev) => ({ ...prev, [sectionKey]: "" }));
     } catch {
-      push(`Section "${sectionTitle}" approved (offline mode).`, "success");
+      push(`Failed to approve section. Please try again.`, "error");
     }
-    setApproved((prev) => ({ ...prev, [sectionTitle]: true }));
-    setRejected((prev) => ({ ...prev, [sectionTitle]: false }));
-    setComments((prev) => ({ ...prev, [sectionTitle]: "" }));
   };
 
-  const handleReject = async (sectionTitle: string) => {
+  const handleReject = async (sectionKey: string) => {
     try {
-      await rejectSection(memoId ?? "", sectionTitle, comments[sectionTitle] ?? "");
-      push(`Section "${sectionTitle}" rejected with comment.`, "error");
+      await rejectSection(memoId ?? "", sectionKey, comments[sectionKey] ?? "");
+      push(`Section rejected with comment.`, "error");
+      setRejected((prev) => ({ ...prev, [sectionKey]: true }));
+      setApproved((prev) => ({ ...prev, [sectionKey]: false }));
+      setComments((prev) => ({ ...prev, [sectionKey]: "" }));
     } catch {
-      push(`Section "${sectionTitle}" rejected (offline mode).`, "error");
+      push(`Failed to reject section. Please try again.`, "error");
     }
-    setRejected((prev) => ({ ...prev, [sectionTitle]: true }));
-    setApproved((prev) => ({ ...prev, [sectionTitle]: false }));
-    setComments((prev) => ({ ...prev, [sectionTitle]: "" }));
   };
 
   const handleFinalize = async () => {
@@ -103,13 +103,13 @@ export default function MemoReview() {
       await finalizeMemo(memoId ?? "");
       push("Memo finalized — compiled document archived.", "success");
     } catch {
-      push("Memo finalized (offline mode).", "success");
+      push("Failed to finalize memo. Please try again.", "error");
     }
   };
 
   const effectiveStatus = (s: (typeof reviewSections)[number]) => {
-    if (approved[s.title]) return "SECTION APPROVED";
-    if (rejected[s.title]) return "LOCKED";
+    if (approved[s.section_key]) return "SECTION APPROVED";
+    if (rejected[s.section_key]) return "LOCKED";
     return s.review_status === "auto_approved" ? "SECTION APPROVED" : s.review_status === "pending" ? "PENDING REVIEW" : s.review_status.toUpperCase();
   };
 
@@ -243,22 +243,22 @@ export default function MemoReview() {
                     <label className="field-label">Review Comment</label>
                     <textarea
                       rows={2}
-                      value={comments[s.title] ?? ""}
-                      onChange={(e) => setComments((prev) => ({ ...prev, [s.title]: e.target.value }))}
+                      value={comments[s.section_key] ?? ""}
+                      onChange={(e) => setComments((prev) => ({ ...prev, [s.section_key]: e.target.value }))}
                       placeholder="Add a review comment…"
                       className="field !py-2.5"
                     />
                     {canApprove && (
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button
-                          onClick={() => handleApprove(s.title)}
-                          disabled={!!approved[s.title]}
+                          onClick={() => handleApprove(s.section_key)}
+                          disabled={!!approved[s.section_key]}
                           className="btn-navy !px-5 !py-2.5 text-xs"
                         >
-                          {approved[s.title] ? "✓ Approved" : "Approve Section"}
+                          {approved[s.section_key] ? "✓ Approved" : "Approve Section"}
                         </button>
                         <button
-                          onClick={() => handleReject(s.title)}
+                          onClick={() => handleReject(s.section_key)}
                           className="btn-outline !px-5 !py-2.5 text-xs !text-status-danger hover:!border-red-200 hover:!bg-red-50"
                         >
                           Reject with Comment
@@ -361,7 +361,7 @@ export default function MemoReview() {
               ✓ Finalize Memo
             </button>
             <p className="text-center text-xs text-frost-steel">
-              Finalize will be enabled once all 6 sections are approved.
+              Finalize will be enabled once all 5 sections are approved.
             </p>
             <button
               onClick={() => push("Memo escalated to Credit Committee.", "info")}
