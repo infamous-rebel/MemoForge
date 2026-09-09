@@ -137,6 +137,10 @@ def advance_stage(
     if not section:
         raise ValueError(f"Section {section_key} not found in memo {memo_id}")
 
+    # Prevent re-approval of already approved sections
+    if section.review_status == "approved":
+        raise ValueError(f"Section {section_key} is already approved")
+
     # Check RBAC
     from app.core.security import can_approve_section
     if not can_approve_section(user_role, section_key):

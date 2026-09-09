@@ -255,7 +255,7 @@ export default function MemoReview() {
                           disabled={!!approved[s.section_key]}
                           className="btn-navy !px-5 !py-2.5 text-xs"
                         >
-                          {approved[s.section_key] ? "✓ Approved" : "Approve Section"}
+                          {approved[s.section_key] ? "✓ Approved" : "{section.review_status === "approved" ? "Approved" : "Approve Section"}"}
                         </button>
                         <button
                           onClick={() => handleReject(s.section_key)}
