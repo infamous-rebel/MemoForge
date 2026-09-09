@@ -1,0 +1,36 @@
+{
+  "financials": {
+    "net_operating_income": 21523182.91,
+    "total_debt_service": 42474824.29,
+    "total_liabilities": 258383453.35,
+    "total_equity": 106312207.02,
+    "current_assets": 47216480.41,
+    "current_liabilities": 21751822.19
+  },
+  "ratios": {
+    "dscr": 0.51,
+    "leverage_ratio": 2.43,
+    "current_ratio": 2.17
+  },
+  "ecl": {
+    "stage1_ecl": 6871.77,
+    "stage2_ecl": 41230.64,
+    "stage3_ecl": 68949.04,
+    "total_ecl": 117051.46
+  },
+  "facility_type": "tawarruq",
+  "shariah_flags": [],
+  "expected_citations": [
+    "chunk_0003_000",
+    "chunk_0003_001",
+    "chunk_0003_002",
+    "chunk_0003_003",
+    "chunk_0003_004"
+  ],
+  "quality_scores": {
+    "clarity": 3.8,
+    "completeness": 4.8,
+    "accuracy": 3.8,
+    "compliance": 4.5
+  }
+}

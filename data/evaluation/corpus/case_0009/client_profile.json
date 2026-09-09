@@ -1,0 +1,18 @@
+{
+  "client_id": "EVAL-0009",
+  "legal_name": "Evaluation Client 0009 W.L.L.",
+  "trade_name": "EvalClient-9",
+  "client_type": "corporate",
+  "sector": "manufacturing",
+  "sub_sector": "building_materials",
+  "risk_rating": "BBB+",
+  "rm_name": "rm_ahmad",
+  "financials": {
+    "net_operating_income": 2299195.17,
+    "total_debt_service": 4814961.12,
+    "total_liabilities": 11923112.27,
+    "total_equity": 13127077.98,
+    "current_assets": 4259651.03,
+    "current_liabilities": 1723379.56
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "client_id": "EVAL-0010",
+  "legal_name": "Evaluation Client 0010 W.L.L.",
+  "trade_name": "EvalClient-10",
+  "client_type": "corporate",
+  "sector": "real_estate",
+  "sub_sector": "commercial_development",
+  "risk_rating": "BBB+",
+  "rm_name": "rm_ahmad",
+  "financials": {
+    "net_operating_income": 2604856.79,
+    "total_debt_service": 3607669.49,
+    "total_liabilities": 11349104.9,
+    "total_equity": 13190229.66,
+    "current_assets": 5540504.11,
+    "current_liabilities": 1843917.83
+  }
+}

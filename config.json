@@ -1,0 +1,189 @@
+{
+  "bank_name": "Warba Bank",
+  "bank_type": "islamic",
+  "country": "Kuwait",
+  "regulator": "Central Bank of Kuwait (CBK)",
+  "reporting_standard": "IFRS 9",
+
+  "rbac": {
+    "roles": ["RM", "Risk", "CreditCommittee", "ShariahBoard", "Admin"],
+    "section_approval_matrix": {
+      "borrower_overview": ["RM", "Admin"],
+      "financial_analysis": ["Risk", "CreditCommittee", "Admin"],
+      "risk_and_mitigants": ["Risk", "CreditCommittee", "Admin"],
+      "policy_exceptions": ["CreditCommittee", "Admin"],
+      "recommendation": ["CreditCommittee", "Admin"],
+      "shariah_flags": ["ShariahBoard"],
+      "sukuk_facility": ["ShariahBoard", "CreditCommittee"]
+    }
+  },
+
+  "shariah_terminology": {
+    "murabaha": {
+      "required_terms": ["cost-plus", "profit rate", "deferred payment", "sale"],
+      "prohibited_terms": ["interest rate", "fixed interest", "conventional loan", "loan", "riba"]
+    },
+    "ijara": {
+      "required_terms": ["lease", "rental", "usufruct", "leased asset"],
+      "prohibited_terms": ["interest rate", "conventional loan", "loan", "riba"]
+    },
+    "musharakah": {
+      "required_terms": ["partnership", "profit-sharing", "joint venture"],
+      "prohibited_terms": ["interest rate", "conventional loan", "loan", "riba"]
+    },
+    "sukuk": {
+      "required_terms": ["certificates", "asset-backed", "trust certificates"],
+      "prohibited_terms": ["interest rate", "bond", "conventional bond", "riba"]
+    },
+    "tawarruq": {
+      "required_terms": ["commodity murabaha", "monetization", "commodity purchase"],
+      "prohibited_terms": ["interest rate", "cash loan", "conventional loan", "riba"]
+    }
+  },
+
+  "hitl_rules": {
+    "always_review_facility_types": ["sukuk"],
+    "always_review_if_deal_value_exceeds": 5000000,
+    "auto_approve_if_no_flags": true,
+    "sections_never_auto_approve": ["policy_exceptions", "shariah_flags"]
+  },
+
+  "risk_thresholds": {
+    "min_dscr": 1.2,
+    "max_leverage_ratio": 3.0,
+    "min_current_ratio": 1.0,
+    "max_npl_ratio": 0.05
+  },
+
+  "data_validation": {
+    "min_confidence_threshold": 0.7,
+    "max_stale_days": 180,
+    "required_fields": [
+      "net_operating_income",
+      "total_debt_service",
+      "total_liabilities",
+      "total_equity",
+      "current_assets",
+      "current_liabilities"
+    ]
+  },
+
+  "approval_workflow": {
+    "stages": ["draft", "risk_review", "credit_committee", "shariah_board", "final_approval"],
+    "final_approval_mode": "dual",
+    "sla_hours": {
+      "risk_review": 24,
+      "credit_committee": 48,
+      "shariah_board": 24,
+      "final_approval": 24
+    }
+  },
+
+  "notification_channels": {
+    "memo_generated": ["email", "in_app"],
+    "section_requires_review": ["email", "in_app"],
+    "approval_stage_changed": ["email", "in_app"],
+    "finalization_ready": ["email", "in_app"],
+    "sla_breach": ["email", "sms", "whatsapp"]
+  },
+
+  "escalation_rules": {
+    "risk_review": {
+      "50": "remind",
+      "80": "notice",
+      "100": "escalate_to_manager",
+      "125": "escalate_to_admin"
+    },
+    "credit_committee": {
+      "50": "remind",
+      "80": "notice",
+      "100": "escalate_to_manager",
+      "125": "escalate_to_admin"
+    },
+    "shariah_board": {
+      "50": "remind",
+      "80": "notice",
+      "100": "escalate_to_manager",
+      "125": "escalate_to_admin"
+    },
+    "final_approval": {
+      "50": "remind",
+      "80": "notice",
+      "100": "escalate_to_manager",
+      "125": "escalate_to_admin"
+    }
+  },
+
+  "evaluation": {
+    "enabled": true,
+    "shadow_mode": true,
+    "metrics": {
+      "source_extraction_accuracy": {
+        "enabled": true,
+        "threshold": 0.90,
+        "weight": 0.15
+      },
+      "ratio_accuracy": {
+        "enabled": true,
+        "threshold": 0.95,
+        "weight": 0.20
+      },
+      "ecl_accuracy": {
+        "enabled": true,
+        "threshold": 0.85,
+        "weight": 0.20
+      },
+      "shariah_classification": {
+        "enabled": true,
+        "threshold": 0.95,
+        "weight": 0.20
+      },
+      "citation_correctness": {
+        "enabled": true,
+        "threshold": 0.98,
+        "weight": 0.15
+      },
+      "human_override_frequency": {
+        "enabled": true,
+        "max_override_rate": 0.20,
+        "weight": 0.05
+      },
+      "final_memo_quality": {
+        "enabled": true,
+        "threshold": 0.85,
+        "weight": 0.05
+      },
+      "processing_time": {
+        "enabled": true,
+        "max_seconds": 300,
+        "weight": 0.00
+      }
+    },
+    "dataset": {
+      "path": "data/evaluation/corpus/",
+      "cases": 100,
+      "refresh_on_start": false
+    },
+    "tolerances": {
+      "amount_pct": 0.02,
+      "ratio_pct": 0.05
+    }
+  },
+
+  "ecl_shariah": {
+    "profit_margin_rate_by_type": {
+      "murabaha": 0.10,
+      "tawarruq": 0.08,
+      "ijara": 0.05,
+      "musharakah": 0.0,
+      "sukuk": 0.0
+    },
+    "asset_recovery_rate_by_type": {
+      "ijara": 0.70,
+      "musharakah": 0.60,
+      "murabaha": 0.0,
+      "tawarruq": 0.0,
+      "sukuk": 0.0
+    }
+  }
+}

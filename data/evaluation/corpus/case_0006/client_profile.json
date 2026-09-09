@@ -1,0 +1,18 @@
+{
+  "client_id": "EVAL-0006",
+  "legal_name": "Evaluation Client 0006 W.L.L.",
+  "trade_name": "EvalClient-6",
+  "client_type": "corporate",
+  "sector": "food_and_beverage",
+  "sub_sector": "food_processing",
+  "risk_rating": "BB+",
+  "rm_name": "rm_ahmad",
+  "financials": {
+    "net_operating_income": 12242568.93,
+    "total_debt_service": 67613294.64,
+    "total_liabilities": 308468608.56,
+    "total_equity": 201833382.4,
+    "current_assets": 55215020.01,
+    "current_liabilities": 39612827.3
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "financials": {
+    "net_operating_income": 2604856.79,
+    "total_debt_service": 3607669.49,
+    "total_liabilities": 11349104.9,
+    "total_equity": 13190229.66,
+    "current_assets": 5540504.11,
+    "current_liabilities": 1843917.83
+  },
+  "ratios": {
+    "dscr": 0.72,
+    "leverage_ratio": 0.86,
+    "current_ratio": 3.0
+  },
+  "ecl": {
+    "stage1_ecl": 539.85,
+    "stage2_ecl": 3239.11,
+    "stage3_ecl": 4663.25,
+    "total_ecl": 8442.22
+  },
+  "facility_type": "musharakah",
+  "shariah_flags": [],
+  "expected_citations": [
+    "chunk_0010_000",
+    "chunk_0010_001",
+    "chunk_0010_002",
+    "chunk_0010_003",
+    "chunk_0010_004"
+  ],
+  "quality_scores": {
+    "clarity": 4.5,
+    "completeness": 4.3,
+    "accuracy": 3.5,
+    "compliance": 4.0
+  }
+}

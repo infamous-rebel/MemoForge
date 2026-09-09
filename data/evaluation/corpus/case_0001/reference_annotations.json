@@ -1,0 +1,36 @@
+{
+  "financials": {
+    "net_operating_income": 10382681.86,
+    "total_debt_service": 40065069.13,
+    "total_liabilities": 163151260.39,
+    "total_equity": 156806953.16,
+    "current_assets": 62377548.99,
+    "current_liabilities": 45697679.83
+  },
+  "ratios": {
+    "dscr": 0.26,
+    "leverage_ratio": 1.04,
+    "current_ratio": 1.37
+  },
+  "ecl": {
+    "stage1_ecl": 13866.67,
+    "stage2_ecl": 83200.04,
+    "stage3_ecl": 67316.83,
+    "total_ecl": 164383.55
+  },
+  "facility_type": "ijara",
+  "shariah_flags": [],
+  "expected_citations": [
+    "chunk_0001_000",
+    "chunk_0001_001",
+    "chunk_0001_002",
+    "chunk_0001_003",
+    "chunk_0001_004"
+  ],
+  "quality_scores": {
+    "clarity": 3.7,
+    "completeness": 3.2,
+    "accuracy": 4.6,
+    "compliance": 4.3
+  }
+}
