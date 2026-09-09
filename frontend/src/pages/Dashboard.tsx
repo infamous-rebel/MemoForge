@@ -81,6 +81,8 @@ function useCountdown(initialSeconds: number) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { push } = useToast();
+  const role = localStorage.getItem("role") || "RM";
+  const canGenerate = role === "RM" || role === "Admin";
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [memos, setMemos] = useState<MemoListItem[]>([]);
@@ -147,12 +149,14 @@ export default function Dashboard() {
             </svg>
             Q2 FY2026
           </button>
-          <button onClick={() => navigate("/generate")} className="btn-navy">
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Generate New Memo
-          </button>
+          {canGenerate && (
+            <button onClick={() => navigate("/generate")} className="btn-navy">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Generate New Memo
+            </button>
+          )}
         </div>
       </div>
 

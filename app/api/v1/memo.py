@@ -339,9 +339,13 @@ def list_clients(
 def generate_memo(
     request: GenerateMemoRequest,
     db: Session = Depends(get_db),
-    user: UserIdentity = Depends(get_current_user),
+    user: UserIdentity = Depends(require_roles("RM", "Admin")),
 ):
     """Generate a new credit memo for a client.
+
+    Only RM and Admin roles may initiate memo generation.
+    Risk, CreditCommittee, and ShariahBoard roles are restricted to
+    review/approval only.
 
     Runs the full pipeline: Data → Validation → Ratios → ECL → Risk →
     Narrative → Compliance → Auto-approval evaluation.

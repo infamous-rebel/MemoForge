@@ -24,6 +24,14 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RMOrAdminRoute({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem("token");
+  if (!token) return <Navigate to="/login" replace />;
+  const role = localStorage.getItem("role");
+  if (role !== "RM" && role !== "Admin") return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <ToastProvider>
@@ -47,11 +55,11 @@ export default function App() {
         <Route
           path="/generate"
           element={
-            <ProtectedRoute>
+            <RMOrAdminRoute>
               <Layout>
                 <GenerateMemo />
               </Layout>
-            </ProtectedRoute>
+            </RMOrAdminRoute>
           }
         />
         <Route

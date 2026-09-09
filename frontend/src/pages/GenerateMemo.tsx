@@ -27,6 +27,8 @@ const PIPELINE_AGENTS = [
 export default function GenerateMemo() {
   const navigate = useNavigate();
   const { push } = useToast();
+  const role = localStorage.getItem("role") || "RM";
+
   const [step, setStep] = useState(1);
   const [client, setClient] = useState(CLIENTS[0]);
   const [facilityType, setFacilityType] = useState("Murabaha");
@@ -64,6 +66,29 @@ export default function GenerateMemo() {
       return () => window.clearTimeout(t);
     }
   }, [agentProgress, step, running, client, facilityType, dealValue, navigate, push]);
+
+  // Only RM and Admin may generate memos (guard after all hooks)
+  if (role !== "RM" && role !== "Admin") {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50">
+            <svg className="h-8 w-8 text-status-danger" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <p className="mt-4 text-lg font-bold text-frost-navy">Access Restricted</p>
+          <p className="mt-2 text-sm text-frost-slate">
+            Only Relationship Managers and Admins can initiate memo generation.<br />
+            Your role ({role}) is limited to review and approval.
+          </p>
+          <button onClick={() => navigate("/dashboard")} className="btn-navy mt-5">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleGenerate = (e: FormEvent) => {
     e.preventDefault();
@@ -221,16 +246,17 @@ export default function GenerateMemo() {
                     <input
                       id="deal-value"
                       type="number"
-                      className="field !py-4 pl-16 font-mono"
+                      className="field !py-4 pl-16 font-mono text-lg font-bold"
                       value={dealValue}
-                      min={0}
+                      min={10_000}
                       step={50_000}
-                      onChange={(e) => setDealValue(Number(e.target.value))}
+                      onChange={(e) => setDealValue(Math.max(0, Number(e.target.value)))}
                       required
                     />
                   </div>
                   <p className="mt-2 text-xs text-frost-steel">
-                    Deals above KD 5,000,000 always route to committee review.
+                    Minimum KD 10,000. Deals above KD 5,000,000 always route to committee review.
+                    The entered value will be used throughout the pipeline and final document.
                   </p>
                 </div>
 
