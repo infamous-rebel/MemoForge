@@ -41,13 +41,13 @@ export default function App() {
               <Layout>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
-                  <Route path="/generate" element={<GenerateMemo />} />
-                  <Route path="/review/:memoId" element={<MemoReview />} />
-                  <Route path="/ecl" element={<ECLDashboard />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/notifications" element={<NotificationCenter />} />
-                  <Route path="/audit" element={<AuditLog />} />
-                  <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+                  <Route path="generate" element={<GenerateMemo />} />
+                  <Route path="review/:memoId" element={<MemoReview />} />
+                  <Route path="ecl" element={<ECLDashboard />} />
+                  <Route path="reports" element={<Reports />} />
+                  <Route path="notifications" element={<NotificationCenter />} />
+                  <Route path="audit" element={<AuditLog />} />
+                  <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
                 </Routes>
               </Layout>
             </ProtectedRoute>
