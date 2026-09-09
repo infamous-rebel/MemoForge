@@ -15,37 +15,24 @@
     "section_approval_matrix": {
       "borrower_overview": [
         "RM",
-        "Risk",
-        "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "financial_analysis": [
-        "RM",
         "Risk",
         "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "risk_and_mitigants": [
-        "RM",
         "Risk",
         "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "policy_exceptions": [
-        "RM",
-        "Risk",
         "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "recommendation": [
-        "RM",
-        "Risk",
         "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "shariah_flags": [
@@ -56,37 +43,24 @@
     "section_approval_roles": {
       "borrower_overview": [
         "RM",
-        "Risk",
-        "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "financial_analysis": [
-        "RM",
         "Risk",
         "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "risk_and_mitigants": [
-        "RM",
         "Risk",
         "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "policy_exceptions": [
-        "RM",
-        "Risk",
         "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "recommendation": [
-        "RM",
-        "Risk",
         "CreditCommittee",
-        "ShariahBoard",
         "Admin"
       ],
       "shariah_flags": [
