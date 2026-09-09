@@ -252,10 +252,10 @@ export default function MemoReview() {
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button
                           onClick={() => handleApprove(s.section_key)}
-                          disabled={!!approved[s.section_key]}
+                          disabled={approved[s.section_key] || s.review_status === "approved" || s.review_status === "auto_approved"}
                           className="btn-navy !px-5 !py-2.5 text-xs"
                         >
-                          {approved[s.section_key] ? "✓ Approved" : "{section.review_status === "approved" ? "Approved" : "Approve Section"}"}
+                          {approved[s.section_key] || s.review_status === "approved" || s.review_status === "auto_approved" ? "Approved" : "Approve Section"}
                         </button>
                         <button
                           onClick={() => handleReject(s.section_key)}
