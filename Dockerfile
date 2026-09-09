@@ -17,4 +17,14 @@ COPY . .
 
 EXPOSE 8000
 
+# Run only the server – DO NOT seed on startup (data persists)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+
+
+
+
+
+
+
