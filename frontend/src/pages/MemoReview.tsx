@@ -1,20 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { approveSection, rejectSection, finalizeMemo, getMemo, getMemoAuditLog } from "../services/api";
 import { useToast } from "../components/Toast";
 import type { Memo, AuditLogEntry } from "../types/api";
-
-function useCountdown(initialSeconds: number) {
-  const [seconds, setSeconds] = useState(initialSeconds);
-  useEffect(() => {
-    const t = window.setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-  const hh = String(Math.floor(seconds / 3600)).padStart(2, "0");
-  const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
-  const ss = String(seconds % 60).padStart(2, "0");
-  return `${hh}:${mm}:${ss}`;
-}
 
 const statusBadge: Record<string, string> = {
   "SECTION APPROVED": "badge-green",
@@ -27,6 +15,20 @@ const workflowIcon: Record<string, { icon: string; className: string }> = {
   active: { icon: "●", className: "bg-status-warning text-white" },
   pending: { icon: "○", className: "border-2 border-frost-mist bg-white text-frost-steel" },
 };
+
+const facilityLabel: Record<string, string> = {
+  murabaha: "Murabaha Facility",
+  ijara: "Ijara Financing",
+  musharakah: "Musharakah Facility",
+  sukuk: "Sukuk Issuance",
+  tawarruq: "Tawarruq Facility",
+};
+
+const stageOrder = ["draft", "risk_review", "credit_committee", "shariah_board", "final_approval"];
+
+function stageIndex(stage: string): number {
+  return stageOrder.indexOf(stage);
+}
 
 export default function MemoReview() {
   const { memoId } = useParams();
@@ -42,37 +44,80 @@ export default function MemoReview() {
   const [approved, setApproved] = useState<Record<string, boolean>>({});
   const [rejected, setRejected] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!memoId) return;
-      try {
-        const [memoRes, auditRes] = await Promise.all([
-          getMemo(memoId),
-          getMemoAuditLog(memoId).catch(() => ({ entries: [] })),
-        ]);
-        setMemo(memoRes);
-        setAuditEntries(auditRes.entries);
-      } catch (err) {
-        push("Failed to load memo", "error");
-      } finally {
-        setLoading(false);
+  const fetchMemo = useCallback(async () => {
+    if (!memoId) return;
+    try {
+      const [memoRes, auditRes] = await Promise.all([
+        getMemo(memoId),
+        getMemoAuditLog(memoId).catch(() => ({ entries: [] })),
+      ]);
+      setMemo(memoRes);
+      setAuditEntries(auditRes.entries);
+
+      // Seed local state from backend review_status so already-approved
+      // sections render correctly on page load
+      const approvedMap: Record<string, boolean> = {};
+      for (const s of memoRes.sections) {
+        if (s.review_status === "approved" || s.review_status === "auto_approved") {
+          approvedMap[s.section_key] = true;
+        }
       }
+      setApproved(approvedMap);
+    } catch (err) {
+      push("Failed to load memo", "error");
+    } finally {
+      setLoading(false);
     }
-    fetchData();
-  }, [memoId]);
+  }, [memoId, push]);
+
+  useEffect(() => { fetchMemo(); }, [fetchMemo]);
 
   const reviewSections = memo?.sections || [];
   const auditTrail = auditEntries;
 
-  // Mock workflow based on memo status
+  // Derive workflow progress from the actual memo stage
+  const currentIdx = memo ? stageIndex(memo.workflow_stage) : -1;
   const reviewWorkflow = memo
     ? [
-        { role: "Relationship Manager", kind: "done" as const, state: "SUBMITTED", meta: "Initial submission" },
-        { role: "Risk Manager", kind: memo.workflow_stage === "risk_review" ? "active" as const : "pending" as const, state: memo.workflow_stage === "risk_review" ? "REVIEWING" : "PENDING" },
-        { role: "Credit Committee", kind: "pending" as const, state: "PENDING" },
-        { role: "Shariah Board", kind: "pending" as const, state: "PENDING" },
+        {
+          role: "Relationship Manager",
+          kind: (currentIdx > 0 ? "done" : currentIdx === 0 ? "active" : "pending") as "done" | "active" | "pending",
+          state: currentIdx > 0 ? "SUBMITTED" : currentIdx === 0 ? "DRAFT" : "PENDING",
+          meta: currentIdx > 0 ? "Initial submission" : "",
+        },
+        {
+          role: "Risk Manager",
+          kind: (currentIdx > 1 ? "done" : currentIdx === 1 ? "active" : "pending") as "done" | "active" | "pending",
+          state: currentIdx > 1 ? "APPROVED" : currentIdx === 1 ? "REVIEWING" : "PENDING",
+          meta: currentIdx === 1 ? "In progress" : "",
+        },
+        {
+          role: "Credit Committee",
+          kind: (currentIdx > 2 ? "done" : currentIdx === 2 ? "active" : "pending") as "done" | "active" | "pending",
+          state: currentIdx > 2 ? "APPROVED" : currentIdx === 2 ? "REVIEWING" : "PENDING",
+          meta: currentIdx === 2 ? "Awaiting quorum" : "",
+        },
+        {
+          role: "Shariah Board",
+          kind: (currentIdx > 3 ? "done" : currentIdx === 3 ? "active" : "pending") as "done" | "active" | "pending",
+          state: currentIdx > 3 ? "APPROVED" : currentIdx === 3 ? "REVIEWING" : "PENDING",
+          meta: currentIdx === 3 ? "Shariah review" : "",
+        },
+        {
+          role: "Final Approval",
+          kind: (currentIdx > 4 ? "done" : currentIdx === 4 ? "active" : "pending") as "done" | "active" | "pending",
+          state: currentIdx >= 4 ? "FINALIZING" : "PENDING",
+          meta: "",
+        },
       ]
     : [];
+
+  // Count approvals for committee quorum
+  const totalSections = reviewSections.length;
+  const approvedCount = reviewSections.filter(
+    (s) => approved[s.section_key] || s.review_status === "approved" || s.review_status === "auto_approved"
+  ).length;
+  const allApproved = totalSections > 0 && approvedCount === totalSections;
 
   const handleApprove = async (sectionKey: string) => {
     try {
@@ -81,6 +126,8 @@ export default function MemoReview() {
       setApproved((prev) => ({ ...prev, [sectionKey]: true }));
       setRejected((prev) => ({ ...prev, [sectionKey]: false }));
       setComments((prev) => ({ ...prev, [sectionKey]: "" }));
+      // Re-fetch to get updated workflow stage and audit trail
+      await fetchMemo();
     } catch {
       push(`Failed to approve section. Please try again.`, "error");
     }
@@ -93,6 +140,8 @@ export default function MemoReview() {
       setRejected((prev) => ({ ...prev, [sectionKey]: true }));
       setApproved((prev) => ({ ...prev, [sectionKey]: false }));
       setComments((prev) => ({ ...prev, [sectionKey]: "" }));
+      // Re-fetch to get updated workflow stage and audit trail
+      await fetchMemo();
     } catch {
       push(`Failed to reject section. Please try again.`, "error");
     }
@@ -102,16 +151,48 @@ export default function MemoReview() {
     try {
       await finalizeMemo(memoId ?? "");
       push("Memo finalized — compiled document archived.", "success");
+      await fetchMemo();
     } catch {
       push("Failed to finalize memo. Please try again.", "error");
     }
   };
 
+  const isApproved = (s: (typeof reviewSections)[number]) =>
+    approved[s.section_key] || s.review_status === "approved" || s.review_status === "auto_approved";
+
   const effectiveStatus = (s: (typeof reviewSections)[number]) => {
-    if (approved[s.section_key]) return "SECTION APPROVED";
+    if (isApproved(s)) return "SECTION APPROVED";
     if (rejected[s.section_key]) return "LOCKED";
-    return s.review_status === "auto_approved" ? "SECTION APPROVED" : s.review_status === "pending" ? "PENDING REVIEW" : s.review_status.toUpperCase();
+    if (s.review_status === "pending") return "PENDING REVIEW";
+    return s.review_status.toUpperCase();
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-frost-mist border-t-frost-navy" />
+          <p className="mt-4 text-sm font-semibold text-frost-steel">Loading memo…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!memo) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="text-center">
+          <p className="text-lg font-bold text-frost-navy">Memo not found</p>
+          <p className="mt-2 text-sm text-frost-slate">The requested memo could not be loaded.</p>
+          <button onClick={() => navigate("/dashboard")} className="btn-navy mt-5">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -126,7 +207,7 @@ export default function MemoReview() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 rounded-full border border-frost-mist bg-white py-1.5 pl-3 pr-4">
             <span className="h-2 w-2 rounded-full bg-status-success" />
-            <span className="text-xs font-bold text-frost-navy">{role} — Risk Mode</span>
+            <span className="text-xs font-bold text-frost-navy">{role}</span>
           </div>
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-frost-navy font-display text-sm font-bold text-gold">
             {(localStorage.getItem("user_id") || "A").charAt(0).toUpperCase()}
@@ -137,12 +218,14 @@ export default function MemoReview() {
       {/* ── Header ──────────────────────────────────────── */}
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold text-frost-navy">
-          #{(memoId ?? "MEM-2026-081").replace(/^#/, "")}: Kuwait Tech Logix
+          #{memo.id}: {memo.client_name || memo.client_id}
         </h1>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="badge-navy">Murabaha Facility</span>
-          <span className="badge-green">Shariah Approved</span>
-          <span className="badge-gray">KD 1,250,000</span>
+          <span className="badge-navy">{facilityLabel[memo.facility_type] || memo.facility_type}</span>
+          <span className={memo.status === "finalized" ? "badge-green" : "badge-amber"}>
+            {memo.status === "finalized" ? "Finalized" : memo.workflow_stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+          </span>
+          <span className="badge-gray">KD {memo.deal_value.toLocaleString()}</span>
         </div>
       </div>
 
@@ -150,9 +233,15 @@ export default function MemoReview() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* LEFT — sections */}
         <div className="space-y-6 xl:col-span-2">
+          {reviewSections.length === 0 && (
+            <div className="card p-10 text-center">
+              <p className="text-sm text-frost-slate">No sections generated yet.</p>
+            </div>
+          )}
           {reviewSections.map((s, idx) => {
             const status = effectiveStatus(s);
-            const locked = status === "LOCKED" && !!s.roleRestriction;
+            const sectionApproved = isApproved(s);
+            const locked = status === "LOCKED";
             return (
               <article key={s.section_key} className={`card p-7 ${locked ? "opacity-75" : ""}`}>
                 <div className="flex items-start justify-between gap-4">
@@ -218,27 +307,16 @@ export default function MemoReview() {
                         </p>
                       </div>
                     ))}
-                    <div className="rounded-xl bg-frost-light px-5 py-4">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-frost-steel">DSCR</p>
-                      <p className="mt-1.5 font-display text-2xl font-bold text-frost-navy">1.44x</p>
-                    </div>
                   </div>
                 )}
 
                 {/* Body */}
-                {s.body ? (
-                  <p className="mt-5 text-sm leading-relaxed text-frost-slate">{s.body}</p>
-                ) : (
+                {s.content && (
                   <p className="mt-5 text-sm leading-relaxed text-frost-slate">{s.content}</p>
                 )}
 
-                {/* Citation */}
-                {s.citation && (
-                  <p className="mt-3 font-mono text-xs text-frost-steel">{s.citation}</p>
-                )}
-
                 {/* Review controls */}
-                {!locked && (s.body || s.content) && (
+                {!locked && s.content && (
                   <div className="mt-6 border-t border-frost-mist pt-5">
                     <label className="field-label">Review Comment</label>
                     <textarea
@@ -252,13 +330,14 @@ export default function MemoReview() {
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button
                           onClick={() => handleApprove(s.section_key)}
-                          disabled={approved[s.section_key] || s.review_status === "approved" || s.review_status === "auto_approved"}
+                          disabled={sectionApproved}
                           className="btn-navy !px-5 !py-2.5 text-xs"
                         >
-                          {approved[s.section_key] || s.review_status === "approved" || s.review_status === "auto_approved" ? "Approved" : "Approve Section"}
+                          {sectionApproved ? "Approved" : "Approve Section"}
                         </button>
                         <button
                           onClick={() => handleReject(s.section_key)}
+                          disabled={sectionApproved}
                           className="btn-outline !px-5 !py-2.5 text-xs !text-status-danger hover:!border-red-200 hover:!bg-red-50"
                         >
                           Reject with Comment
@@ -316,12 +395,16 @@ export default function MemoReview() {
             <div className="mt-2 border-t border-frost-mist pt-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-wider text-frost-steel">
-                  Committee Quorum
+                  Section Approvals
                 </p>
-                <p className="text-sm font-bold text-frost-deep">0/2 Approvals</p>
+                <p className="text-sm font-bold text-frost-deep">
+                  {approvedCount}/{totalSections} Approved
+                </p>
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-frost-slate">
-                Requires dual final approval from Risk Head and Shariah Advisor.
+                {allApproved
+                  ? "All sections approved — ready for finalization."
+                  : `${totalSections - approvedCount} section(s) pending approval.`}
               </p>
             </div>
           </div>
@@ -330,13 +413,16 @@ export default function MemoReview() {
           <div className="card p-6">
             <h2 className="text-base font-bold text-frost-deep">Audit Trail</h2>
             <ol className="mt-5 space-y-4">
+              {auditTrail.length === 0 && (
+                <li className="text-xs text-frost-steel">No audit entries yet.</li>
+              )}
               {auditTrail.map((a, idx) => (
                 <li key={a.id || idx} className="flex gap-3.5">
                   <div className="mt-1 flex h-2.5 w-2.5 shrink-0 rounded-full bg-frost-navy ring-4 ring-frost-navy/10" />
                   <div>
                     <div className="flex items-baseline gap-2">
                       <p className="text-sm font-semibold text-frost-deep">{a.user_id || "system"}</p>
-                      <span className="text-[10px] text-frost-steel">{new Date(a.timestamp).toLocaleString()}</span>
+                      <span className="text-[10px] text-frost-steel">{a.timestamp ? new Date(a.timestamp).toLocaleString() : ""}</span>
                     </div>
                     <p className="mt-0.5 text-xs leading-relaxed text-frost-slate">{a.action}</p>
                   </div>
@@ -356,12 +442,14 @@ export default function MemoReview() {
             <button
               onClick={handleFinalize}
               className="btn-navy w-full py-3.5"
-              disabled={!canApprove}
+              disabled={!canApprove || !allApproved}
             >
               ✓ Finalize Memo
             </button>
             <p className="text-center text-xs text-frost-steel">
-              Finalize will be enabled once all 5 sections are approved.
+              {allApproved
+                ? "All sections approved. You may finalize this memo."
+                : `Finalize will be enabled once all ${totalSections} sections are approved.`}
             </p>
             <button
               onClick={() => push("Memo escalated to Credit Committee.", "info")}
