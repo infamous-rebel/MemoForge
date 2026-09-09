@@ -17,17 +17,20 @@ export default function Reports() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("SLA VIOLATIONS");
   const [report, setReport] = useState<ReportSummary | null>(null);
+  const [delayReport, setDelayReport] = useState<ReportSummary | null>(null);
   const [escalations, setEscalations] = useState<EscalationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [reportRes, escRes] = await Promise.all([
+        const [reportRes, delayRes, escRes] = await Promise.all([
           getReport("pipeline_status"),
+          getReport("approval_delay").catch(() => null),
           getEscalations(),
         ]);
         setReport(reportRes);
+        if (delayRes) setDelayReport(delayRes);
         setEscalations(escRes.escalations);
       } catch (err) {
         push("Failed to load reporting data", "error");
@@ -75,13 +78,43 @@ export default function Reports() {
       type: breachPct > 100 ? "CRITICAL BREACH" as const : "WARNING" as const,
       memoId: e.memo_id,
       stage: e.escalation_reason || e.stage || "—",
-      assignedTo: "Risk Manager",
+      assignedTo: e.recipient || "—",
       delay: delayLabel,
       action: breachPct > 100 ? "ESCALATE" as const : "REVIEW" as const,
     };
   });
 
-  const approvalDelays = slaViolations; // Same data for now
+  // Parse real approval delay data from the dedicated report
+  const parsedDelays = (() => {
+    if (!delayReport?.content) return null;
+    try {
+      return JSON.parse(delayReport.content) as {
+        total_delays: number;
+        delays: Array<{
+          memo_id: string;
+          client_id: string;
+          stage: string;
+          sla_hours: number;
+          elapsed_hours: number;
+          overdue_hours: number;
+        }>;
+      };
+    } catch {
+      return null;
+    }
+  })();
+
+  const approvalDelays = parsedDelays && parsedDelays.delays.length > 0
+    ? parsedDelays.delays.map((d) => ({
+        type: (d.overdue_hours > d.sla_hours * 0.25 ? "CRITICAL BREACH" : "WARNING") as "CRITICAL BREACH" | "WARNING",
+        memoId: d.memo_id,
+        stage: d.stage,
+        assignedTo: "—",
+        delay: `+${Math.round(d.overdue_hours)}h overdue`,
+        action: (d.overdue_hours > d.sla_hours * 0.25 ? "ESCALATE" : "REVIEW") as "ESCALATE" | "REVIEW",
+      }))
+    : slaViolations; // Fallback to escalation data when no delay report
+
   const logs = tab === "SLA VIOLATIONS" ? slaViolations : approvalDelays;
 
   const handleExport = () => {
