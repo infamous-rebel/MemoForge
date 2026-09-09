@@ -29,6 +29,7 @@ export default function App() {
     <ToastProvider>
       <Routes>
         {/* Public */}
+        <Route path="/" element={<Landing />} />
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
 
