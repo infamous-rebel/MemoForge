@@ -20,7 +20,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const role = localStorage.getItem("role");
-  if (role !== "Admin") return <Navigate to="/" replace />;
+  if (role !== "Admin") return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -33,28 +33,92 @@ export default function App() {
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
 
-        {/* Protected application */}
+        {/* Protected pages - each wrapped individually */}
         <Route
-          path="/*"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="generate" element={<GenerateMemo />} />
-                  <Route path="review/:memoId" element={<MemoReview />} />
-                  <Route path="ecl" element={<ECLDashboard />} />
-                  <Route path="reports" element={<Reports />} />
-                  <Route path="notifications" element={<NotificationCenter />} />
-                  <Route path="audit" element={<AuditLog />} />
-                  <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
-                </Routes>
+                <Dashboard />
               </Layout>
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/generate"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <GenerateMemo />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/review/:memoId"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <MemoReview />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ecl"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ECLDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Reports />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <NotificationCenter />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/audit"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AuditLog />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Layout>
+                <Admin />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ToastProvider>
   );
 }
+
