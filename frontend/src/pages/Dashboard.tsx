@@ -3,43 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useToast } from "../components/Toast";
 import { SkeletonTable } from "../components/Skeleton";
-import { getMemos, computeECL } from "../services/api";
-import type { MemoListItem, ECLResult } from "../types/api";
+import { getMemos, computeECL, getReport, getEscalations } from "../services/api";
+import type { MemoListItem, ECLResult, ReportSummary, EscalationItem } from "../types/api";
 import { formatKD } from "../data/mockData";
 
 type SlaStatus = "On Track" | "At Risk" | "Overdue";
 type WorkflowStage = string;
-
-const kpis = [
-  {
-    label: "Active Memos",
-    value: "24",
-    trend: "+3 this week",
-    icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z",
-    tone: "navy",
-  },
-  {
-    label: "Pending Approvals",
-    value: "08",
-    trend: "2 urgent",
-    icon: "M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z",
-    tone: "warning",
-  },
-  {
-    label: "ECL Total (Stage 3)",
-    value: "KD 1.4M",
-    trend: "Impaired facilities",
-    icon: "M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z",
-    tone: "navy",
-  },
-  {
-    label: "Compliance Flags",
-    value: "03",
-    trend: "1 shariah · 1 citation · 1 policy",
-    icon: "M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z",
-    tone: "warning",
-  },
-];
 
 const stageBadge: Record<WorkflowStage, string> = {
   Draft: "badge-gray",
@@ -47,6 +16,11 @@ const stageBadge: Record<WorkflowStage, string> = {
   "Credit Committee": "badge-green",
   "Shariah Board": "badge-amber",
   "Final Approval": "badge-navy",
+  draft: "badge-gray",
+  risk_review: "badge-blue",
+  credit_committee: "badge-green",
+  shariah_board: "badge-amber",
+  final_approval: "badge-navy",
 };
 
 const slaBadge: Record<SlaStatus, string> = {
@@ -55,12 +29,8 @@ const slaBadge: Record<SlaStatus, string> = {
   Overdue: "badge-red",
 };
 
-const workflowSteps = [
-  { label: "Draft", state: "done" },
-  { label: "Risk", state: "current" },
-  { label: "Comm.", state: "pending" },
-  { label: "Shariah", state: "pending" },
-] as const;
+const stageOrder = ["draft", "risk_review", "credit_committee", "shariah_board", "final_approval"];
+const stageLabels = ["Draft", "Risk", "Comm.", "Shariah", "Final"];
 
 const stageColors = ["#0F2A4A", "#64748B", "#F59E0B"];
 
@@ -87,17 +57,23 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [memos, setMemos] = useState<MemoListItem[]>([]);
   const [eclData, setEclData] = useState<ECLResult | null>(null);
+  const [report, setReport] = useState<ReportSummary | null>(null);
+  const [escalations, setEscalations] = useState<EscalationItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [memosRes, eclRes] = await Promise.all([
+        const [memosRes, eclRes, reportRes, escRes] = await Promise.all([
           getMemos(),
           computeECL().catch(() => null),
+          getReport("pipeline_status").catch(() => null),
+          getEscalations().catch(() => ({ escalations: [] })),
         ]);
         setMemos(memosRes.memos);
         setEclData(eclRes);
+        if (reportRes) setReport(reportRes);
+        setEscalations(escRes.escalations ?? []);
         if (memosRes.memos.length > 0) {
           setSelectedId(memosRes.memos[0].id);
         }
@@ -132,6 +108,60 @@ export default function Dashboard() {
       ]
     : [];
 
+  // ── Derive KPIs from real API data ──────────────────────
+  const activeMemos = memos.filter((m) => m.status !== "finalized" && m.status !== "rejected").length;
+  const pendingApprovals = memos.reduce((sum, m) => sum + (m.pending_review_count ?? 0), 0);
+  const totalShariahFlags = memos.reduce((sum, m) => sum + (m.shariah_flag_count ?? 0), 0);
+  const totalCitationFlags = memos.reduce((sum, m) => sum + (m.citation_flag_count ?? 0), 0);
+  const totalComplianceFlags = totalShariahFlags + totalCitationFlags;
+  const overdueMemos = memos.filter((m) => m.sla_status === "Overdue").length;
+
+  const kpis = [
+    {
+      label: "Active Memos",
+      value: loading ? "—" : String(activeMemos),
+      trend: loading ? "" : `${memos.length} total · ${escalations.length} escalated`,
+      icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z",
+      tone: "navy",
+    },
+    {
+      label: "Pending Approvals",
+      value: loading ? "—" : String(pendingApprovals),
+      trend: loading ? "" : overdueMemos > 0 ? `${overdueMemos} overdue` : "None overdue",
+      icon: "M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z",
+      tone: pendingApprovals > 0 ? "warning" : "navy",
+    },
+    {
+      label: "ECL Total (Stage 3)",
+      value: loading ? "—" : eclData ? formatKD(eclData.stage3_ecl) : "—",
+      trend: loading ? "" : eclData ? `of ${formatKD(eclData.total_ecl)} total ECL` : "No data",
+      icon: "M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z",
+      tone: "navy",
+    },
+    {
+      label: "Compliance Flags",
+      value: loading ? "—" : String(totalComplianceFlags),
+      trend: loading ? "" : totalComplianceFlags > 0
+        ? `${totalShariahFlags} shariah · ${totalCitationFlags} citation`
+        : "No active flags",
+      icon: "M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z",
+      tone: totalComplianceFlags > 0 ? "warning" : "navy",
+    },
+  ];
+
+  // ── Workflow progress from selected memo ────────────────
+  const selectedStageIdx = selected
+    ? stageOrder.indexOf(selected.workflow_stage)
+    : 0;
+  const workflowSteps = stageLabels.map((label, i) => ({
+    label,
+    state: (
+      selectedStageIdx > i ? "done"
+        : selectedStageIdx === i ? "current"
+          : "pending"
+    ) as "done" | "current" | "pending",
+  }));
+
   return (
     <div>
       {/* ── Header ─────────────────────────────────────── */}
@@ -139,7 +169,7 @@ export default function Dashboard() {
         <div>
           <h1 className="font-display text-3xl font-bold text-frost-navy">Credit Dashboard</h1>
           <p className="mt-1 text-sm text-frost-slate">
-            Memo pipeline, approvals, and portfolio intelligence — Q2 FY2026.
+            Memo pipeline, approvals, and portfolio intelligence — {memos.length} memo{memos.length !== 1 ? "s" : ""} tracked.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -147,7 +177,7 @@ export default function Dashboard() {
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
             </svg>
-            Q2 FY2026
+            {report?.generated_at ? new Date(report.generated_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Live"}
           </button>
           {canGenerate && (
             <button onClick={() => navigate("/generate")} className="btn-navy">

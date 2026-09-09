@@ -104,7 +104,7 @@ export default function ECLDashboard() {
     {
       label: "Total Exposure",
       value: eclSummary ? formatKD(eclSummary.totalExposure) : "—",
-      sub: "48 facilities under coverage",
+      sub: eclSummary ? `${totalFacilities} facilities under coverage` : "—",
       tone: "text-frost-navy",
     },
     {
