@@ -6,9 +6,6 @@ Retrieves relevant document chunks for a given query, filtered by:
 
 Falls back to ILIKE keyword search when vector search returns no results
 or when the embedding provider fails.
-
-Design decision: ACL filtering is applied at the SQL query level (before
-similarity search) to ensure the LLM never sees unauthorized data.
 """
 
 from __future__ import annotations
@@ -45,12 +42,11 @@ def _apply_acl_filter(query, acl_groups, acl_enabled):
     if not acl_enabled or not acl_groups:
         return query
 
-    # We can't use .contains() on JSONB in PostgreSQL (it uses LIKE, which fails).
-    # Instead, we cast the JSON column to text and use LIKE for portability.
     from app.db.models import Chunk
 
     acl_conditions = []
     for group in acl_groups:
+        # Cast JSONB to text so LIKE works on PostgreSQL
         acl_conditions.append(
             func.cast(Chunk.acl_groups, func.type_coerce("text")).like(f'%"{group}"%')
         )
