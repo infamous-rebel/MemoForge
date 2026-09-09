@@ -247,6 +247,7 @@ def get_auth_token(request: TokenRequest, db: Session = Depends(get_db)):
     return TokenResponse(
         access_token=token,
         user_id=user.username,
+        username=user.username,
         role=user.role,
         full_name=user.full_name,
     )
@@ -462,6 +463,13 @@ def list_memos(
             sla_status = "On Track"
             remaining_hours = None
 
+        # Count citation problems across all sections for this memo
+        citation_flag_count = sum(
+            len((s.flags_json or {}).get("citation", []))
+            + len((s.flags_json or {}).get("citations", []))
+            for s in m.sections
+        )
+
         result.append({
             "id": m.id,
             "client_id": m.client_id,
@@ -473,11 +481,12 @@ def list_memos(
             "created_by": m.created_by,
             "created_at": m.created_at.isoformat() if m.created_at else None,
             "finalized_at": m.finalized_at.isoformat() if m.finalized_at else None,
-            "sections_total": len(m.sections),
-            "sections_pending_review": pending_sections,
+            "section_count": len(m.sections),
+            "pending_review_count": pending_sections,
             "shariah_flag_count": shariah_flag_count,
+            "citation_flag_count": citation_flag_count,
             "sla_status": sla_status,
-            "sla_remaining_hours": round(remaining_hours, 1) if remaining_hours is not None else None,
+            "sla_hours_remaining": round(remaining_hours, 1) if remaining_hours is not None else None,
             "stage_entered_at": entered_at.isoformat() if entered_at else None,
             "stage_sla_hours": stage_sla,
         })

@@ -57,8 +57,8 @@ export default function GenerateMemo() {
           push("Memo generated — routed for review.", "success");
           navigate(`/review/${res.memo_id}`);
         } catch {
-          push("Pipeline complete. Opening review workspace.", "success");
-          navigate("/review/MEM-2026-081");
+          push("Memo generation failed. Please try again.", "error");
+          navigate("/dashboard");
         }
       }, 700);
       return () => window.clearTimeout(t);
@@ -272,7 +272,7 @@ export default function GenerateMemo() {
               </div>
 
               <div className="mt-10 flex items-center justify-between">
-                <button type="button" onClick={() => navigate("/")} className="btn-ghost text-frost-steel">
+                <button type="button" onClick={() => navigate("/dashboard")} className="btn-ghost text-frost-steel">
                   Cancel Process
                 </button>
                 <button type="submit" className="btn-navy px-6">

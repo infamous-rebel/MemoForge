@@ -64,22 +64,22 @@ export async function getMemo(id: string): Promise<Memo> {
 export async function approveSection(
   memoId: string,
   sectionKey: string,
-  comments: string,
+  comment: string,
 ): Promise<unknown> {
   return request(`/memo/${memoId}/approve`, {
     method: "POST",
-    body: JSON.stringify({ section_key: sectionKey, comments }),
+    body: JSON.stringify({ section_key: sectionKey, comment }),
   });
 }
 
 export async function rejectSection(
   memoId: string,
   sectionKey: string,
-  comments: string,
+  comment: string,
 ): Promise<unknown> {
   return request(`/memo/${memoId}/reject`, {
     method: "POST",
-    body: JSON.stringify({ section_key: sectionKey, comments }),
+    body: JSON.stringify({ section_key: sectionKey, comment }),
   });
 }
 
