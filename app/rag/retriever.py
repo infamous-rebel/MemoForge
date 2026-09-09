@@ -14,7 +14,7 @@ import logging
 from dataclasses import dataclass
 from typing import List, Optional
 
-from sqlalchemy import text, or_, func
+from sqlalchemy import or_, func, cast, String
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -38,6 +38,7 @@ def _apply_acl_filter(query, acl_groups, acl_enabled):
     """Apply ACL filtering on a query.
 
     Works on both PostgreSQL (JSONB) and SQLite (JSON text).
+    Casts the JSON column to text and uses LIKE for portability.
     """
     if not acl_enabled or not acl_groups:
         return query
@@ -48,7 +49,7 @@ def _apply_acl_filter(query, acl_groups, acl_enabled):
     for group in acl_groups:
         # Cast JSONB to text so LIKE works on PostgreSQL
         acl_conditions.append(
-            func.cast(Chunk.acl_groups, func.type_coerce("text")).like(f'%"{group}"%')
+            cast(Chunk.acl_groups, String).like(f'%"{group}"%')
         )
 
     return query.filter(or_(*acl_conditions))
