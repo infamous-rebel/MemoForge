@@ -117,7 +117,7 @@ export default function MemoReview() {
     <div>
       {/* ── Top bar ─────────────────────────────────────── */}
       <div className="mb-7 flex items-center justify-between">
-        <Link to="/" className="btn-ghost !px-3 text-frost-slate">
+        <Link to="/dashboard" className="btn-ghost !px-3 text-frost-slate">
           <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
