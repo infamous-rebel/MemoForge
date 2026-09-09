@@ -77,6 +77,16 @@ class Settings(BaseSettings):
     rag_top_k: int = Field(default=10, alias="RAG_TOP_K")
     rag_acl_enabled: bool = Field(default=True, alias="RAG_ACL_ENABLED")
 
+    # --- CORS ---
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8000",
+        alias="CORS_ORIGINS",
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     # --- Notifications ---
     smtp_host: Optional[str] = Field(default=None, alias="SMTP_HOST")
     smtp_port: int = Field(default=587, alias="SMTP_PORT")
