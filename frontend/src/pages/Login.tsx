@@ -18,7 +18,7 @@ export default function Login() {
       localStorage.setItem("token", res.access_token);
       localStorage.setItem("role", res.role);
       localStorage.setItem("user_id", res.user_id);
-      navigate("/");
+      navigate("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
