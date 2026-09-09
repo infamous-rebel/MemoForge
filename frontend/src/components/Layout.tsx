@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { getNotifications } from "../services/api";
 
 const tabs = [
-  { to: "/", label: "Memos" },
+  { to: "/dashboard", label: "Memos" },
   { to: "/ecl", label: "Compliance" },
   { to: "/reports", label: "Reports" },
   { to: "/admin", label: "Admin" },
