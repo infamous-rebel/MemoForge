@@ -877,7 +877,7 @@ def mark_notification_read(
 @router.get("/escalations")
 def list_escalations(
     db: Session = Depends(get_db),
-    user: UserIdentity = Depends(require_roles("RM", "Admin", "Risk", "CreditCommittee")),
+    user: UserIdentity = Depends(require_roles("RM", "Admin", "Risk", "CreditCommittee", "ShariahBoard")),
 ):
     """List active escalations with client context."""
     escalations = get_active_escalations(db)
@@ -983,7 +983,7 @@ def get_global_audit_log(
 @router.post("/risk/ecl")
 def compute_ecl_endpoint(
     request: ECLRequest,
-    user: UserIdentity = Depends(require_roles("RM", "Admin", "Risk", "CreditCommittee")),
+    user: UserIdentity = Depends(require_roles("RM", "Admin", "Risk", "CreditCommittee", "ShariahBoard")),
 ):
     """Compute ECL for a synthetic portfolio."""
     from app.risk.ecl_engine import compute_ecl
