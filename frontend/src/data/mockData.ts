@@ -29,7 +29,7 @@ export interface PipelineMemo {
 
 export const pipelineMemos: PipelineMemo[] = [
   {
-    id: "#MEM-2026-081",
+    id: "MEM-2026-081",
     client: "Kuwait Tech Logix",
     clientCode: "KTL",
     facilityType: "Murabaha Facility",
@@ -42,7 +42,7 @@ export const pipelineMemos: PipelineMemo[] = [
     assignedNote: "Awaiting financial ratio validation.",
   },
   {
-    id: "#MEM-2026-078",
+    id: "MEM-2026-078",
     client: "Gulf Al-Oula Ltd",
     clientCode: "GA",
     facilityType: "Ijara Financing",
@@ -55,7 +55,7 @@ export const pipelineMemos: PipelineMemo[] = [
     assignedNote: "Prohibited-term review in progress.",
   },
   {
-    id: "#MEM-2026-075",
+    id: "MEM-2026-075",
     client: "Beacon National",
     clientCode: "BN",
     facilityType: "Revolving Credit",
@@ -68,7 +68,7 @@ export const pipelineMemos: PipelineMemo[] = [
     assignedNote: "Quorum pending second approval.",
   },
   {
-    id: "#MEM-2026-069",
+    id: "MEM-2026-069",
     client: "Amghara Industries",
     clientCode: "AI",
     facilityType: "Musharakah Facility",
@@ -81,7 +81,7 @@ export const pipelineMemos: PipelineMemo[] = [
     assignedNote: "Narrative generation queued.",
   },
   {
-    id: "#MEM-2026-062",
+    id: "MEM-2026-062",
     client: "Sharq Holdings",
     clientCode: "SH",
     facilityType: "Sukuk Issuance",
@@ -106,22 +106,22 @@ export interface ComplianceAlert {
 export const complianceAlerts: ComplianceAlert[] = [
   {
     kind: "SHARIAH FLAG",
-    memoId: "#MEM-2026-078",
-    detail: "Clause 4.2 in #MEM-078 contains prohibited profit-sharing terms.",
+    memoId: "MEM-2026-078",
+    detail: "Clause 4.2 in MEM-2026-078 contains prohibited profit-sharing terms.",
     action: "Review Now",
     when: "Just now",
   },
   {
     kind: "CITATION ISSUE",
-    memoId: "#MEM-2026-081",
-    detail: "Internal Policy BP-2024 citation is outdated in #MEM-081.",
+    memoId: "MEM-2026-081",
+    detail: "Internal Policy BP-2024 citation is outdated in MEM-2026-081.",
     action: "Update Citation",
     when: "2h ago",
   },
   {
     kind: "POLICY EXCEPTION",
-    memoId: "#MEM-2026-062",
-    detail: "Single-name exposure exceeds 10% of Tier 1 capital in #MEM-062.",
+    memoId: "MEM-2026-062",
+    detail: "Single-name exposure exceeds 10% of Tier 1 capital in MEM-2026-062.",
     action: "Review Now",
     when: "1d ago",
   },
@@ -296,7 +296,7 @@ export interface PerformanceLog {
 export const slaViolations: PerformanceLog[] = [
   {
     type: "CRITICAL BREACH",
-    memoId: "#MEM-2026-062",
+    memoId: "MEM-2026-062",
     stage: "Risk Review",
     assignedTo: "J. Smith (RM)",
     delay: "+18h 12m",
@@ -304,7 +304,7 @@ export const slaViolations: PerformanceLog[] = [
   },
   {
     type: "WARNING",
-    memoId: "#MEM-2026-078",
+    memoId: "MEM-2026-078",
     stage: "Shariah Audit",
     assignedTo: "F. Rashid",
     delay: "+2h 05m",
@@ -312,7 +312,7 @@ export const slaViolations: PerformanceLog[] = [
   },
   {
     type: "WARNING",
-    memoId: "#MEM-2026-059",
+    memoId: "MEM-2026-059",
     stage: "Credit Committee",
     assignedTo: "Committee Quorum",
     delay: "+1h 40m",
@@ -323,7 +323,7 @@ export const slaViolations: PerformanceLog[] = [
 export const approvalDelays: PerformanceLog[] = [
   {
     type: "WARNING",
-    memoId: "#MEM-2026-081",
+    memoId: "MEM-2026-081",
     stage: "Risk Review",
     assignedTo: "K. Al-Anzi (Risk)",
     delay: "+6h 30m",
@@ -331,7 +331,7 @@ export const approvalDelays: PerformanceLog[] = [
   },
   {
     type: "CRITICAL BREACH",
-    memoId: "#MEM-2026-055",
+    memoId: "MEM-2026-055",
     stage: "Final Approval",
     assignedTo: "Dual Signatories",
     delay: "+26h 00m",
@@ -354,11 +354,11 @@ export interface SystemAuditEntry {
 }
 
 export const systemAuditLog: SystemAuditEntry[] = [
-  { timestamp: "2026-03-14 14:22:05", user: "A. Farsi", action: "UPDATE_SECTION", resource: "#MEM-081", status: "SUCCESS" },
-  { timestamp: "2026-03-14 13:10:42", user: "System", action: "ESCALATION_TRIGGER", resource: "#MEM-062", status: "SUCCESS" },
-  { timestamp: "2026-03-14 11:05:18", user: "F. Rashid", action: "REJECT_MEMO", resource: "#MEM-078", status: "SUCCESS" },
+  { timestamp: "2026-03-14 14:22:05", user: "A. Farsi", action: "UPDATE_SECTION", resource: "MEM-2026-081", status: "SUCCESS" },
+  { timestamp: "2026-03-14 13:10:42", user: "System", action: "ESCALATION_TRIGGER", resource: "MEM-2026-062", status: "SUCCESS" },
+  { timestamp: "2026-03-14 11:05:18", user: "F. Rashid", action: "REJECT_MEMO", resource: "MEM-2026-078", status: "SUCCESS" },
   { timestamp: "2026-03-14 09:58:03", user: "S. Al-Mutairi", action: "LOGIN", resource: "SESSION-4471", status: "SUCCESS" },
-  { timestamp: "2026-03-13 17:44:29", user: "M. Al-Otaibi", action: "APPROVE_SECTION", resource: "#MEM-075", status: "SUCCESS" },
+  { timestamp: "2026-03-13 17:44:29", user: "M. Al-Otaibi", action: "APPROVE_SECTION", resource: "MEM-2026-075", status: "SUCCESS" },
   { timestamp: "2026-03-13 16:12:51", user: "Unknown", action: "LOGIN", resource: "SESSION-4468", status: "FAILED" },
 ];
 

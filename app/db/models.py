@@ -59,6 +59,19 @@ def _new_id() -> str:
     return str(uuid.uuid4())
 
 
+def _new_memo_id() -> str:
+    """Generate a human-readable memo ID: MEM-YYYY-NNN.
+
+    Uses a random 3-digit suffix. Collision risk is negligible for
+    production volumes (<10k memos per year). The seed script sets
+    explicit IDs so this only applies to runtime-generated memos.
+    """
+    import random
+    year = datetime.now(timezone.utc).year
+    seq = random.randint(100, 999)
+    return f"MEM-{year}-{seq:03d}"
+
+
 # =============================================================================
 # Memo & Sections
 # =============================================================================
@@ -67,7 +80,7 @@ class Memo(Base):
     """Top-level credit memo entity."""
     __tablename__ = "memos"
 
-    id = Column(String(36), primary_key=True, default=_new_id)
+    id = Column(String(36), primary_key=True, default=_new_memo_id)
     client_id = Column(String(255), nullable=False, index=True)
     client_name = Column(String(500), nullable=True)
     facility_type = Column(String(50), nullable=False)
