@@ -451,15 +451,29 @@ def _run_sequential_pipeline(
             created_by=created_by,
         )
 
-        # Run each step sequentially
-        state = _step_data(state, db=db)
-        state = _step_validation(state, db=db)
-        state = _step_ratios(state, db=db)
-        state = _step_ecl(state, db=db)
-        state = _step_risk(state, db=db)
-        state = _step_narrative(state, db=db)
-        state = _step_compliance(state, db=db)
-        state = _step_approval(state, db=db)
+        # Run each step sequentially with detailed logging
+        steps = [
+            ("data_retrieval", _step_data),
+            ("data_validation", _step_validation),
+            ("ratio_computation", _step_ratios),
+            ("ecl_engine", _step_ecl),
+            ("risk_intelligence", _step_risk),
+            ("narrative_generation", _step_narrative),
+            ("compliance_checking", _step_compliance),
+            ("approval_routing", _step_approval),
+        ]
+
+        for step_name, step_func in steps:
+            logger.info("Pipeline step '%s' starting for memo %s", step_name, memo.id)
+            try:
+                state = step_func(state, db=db)
+                logger.info("Pipeline step '%s' completed", step_name)
+            except Exception as step_err:
+                logger.error(
+                    "Pipeline step '%s' FAILED: %s",
+                    step_name, step_err, exc_info=True,
+                )
+                raise
 
         db.commit()
         logger.info(
