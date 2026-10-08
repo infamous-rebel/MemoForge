@@ -94,13 +94,25 @@ async def startup_event():
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint."""
+    """Health check endpoint with database status."""
+    db_status = "unknown"
+    try:
+        from app.db.session import get_db_session
+        from app.core.users import UserAccount
+        db = get_db_session()
+        db.query(UserAccount).count()
+        db.close()
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)[:100]}"
+
     return {
-        "status": "healthy",
+        "status": "healthy" if db_status == "connected" else "degraded",
         "app": settings.app_name,
         "version": "1.0.0",
         "env": settings.app_env,
         "mock_mode": settings.mock_mode,
+        "database": db_status,
     }
 
 
