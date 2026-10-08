@@ -435,7 +435,7 @@ def _run_sequential_pipeline(
         created_by=created_by,
     )
     db.add(memo)
-    db.flush()
+    db.commit()  # Commit memo creation so it exists even if pipeline fails
 
     acl = rm_acl_groups or []
 
@@ -483,7 +483,7 @@ def _run_sequential_pipeline(
 
     except Exception as e:
         logger.error("Sequential pipeline error: %s", e, exc_info=True)
-        db.rollback()  # Rollback failed transaction before updating
+        # Memo already committed, just update status
         memo.status = "error"
         memo.metadata_json = {"error": str(e)[:500]}
         db.commit()
