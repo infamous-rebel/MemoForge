@@ -1,6 +1,9 @@
-﻿# MemoForge — AI Client Documentation Generator for Warba Bank
+# MemoForge — AI Client Documentation Generator for Warba Bank
 
 Production-grade, Shariah-compliant AI client documentation generator built for **Warba Bank** (100% Islamic, Kuwait).
+
+**Live Demo:** https://memo-forge.vercel.app
+**Backend API:** https://memoforge-production.up.railway.app
 
 ## Architecture
 
@@ -19,7 +22,7 @@ Production-grade, Shariah-compliant AI client documentation generator built for 
 └────────────────────────┬─────────────────────────────────┘
                          │
 ┌────────────────────────▼─────────────────────────────────┐
-│              LangGraph Pipeline + Sequential Fallback     │
+│           Agent Pipeline (Sequential; LangGraph Optional) │
 │                                                          │
 │  DataAgent → DataValidation → Ratio → ECL → Risk →      │
 │  Narrative → Compliance → Approval → Compiler            │
@@ -34,56 +37,36 @@ Production-grade, Shariah-compliant AI client documentation generator built for 
 │  • security — JWT + 5-role RBAC                         │
 │  • audit — hash-chain tamper-evident log                 │
 │  • integrations — CRM/CoreBanking/MarketData connectors  │
-│  • llm_client — 6 providers (no silent mock fallback)   │
+│  • llm_client — 5 providers (no silent mock fallback)   │
 └──────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
 
-### 1. Backend (FastAPI)
-
 ```bash
-# From the project root (MemoForge/)
+# Backend
 cp .env.example .env
 pip install -r requirements.txt
-
-# Set local demo environment (SQLite + Mock LLM)
-export MOCK_MODE=true
-export DATABASE_URL=sqlite:///./memoforge.db
-
-# Seed the database with demo clients, memos, and users
-python3 -m app.scripts.seed_demo_data
-
-# Start the API server
+python3 -m app.scripts.seed_demo_data   # seed sample data
 uvicorn app.main:app --reload --port 8000
-```
 
-### 2. Frontend (React + Vite)
-
-```bash
-# In a new terminal, from the project root
+# Frontend
 cd frontend
 npm install
-npm run dev
+npm run dev    # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000/) to access MemoForge.
+## Demo Credentials
 
----
+After seeding, log in with any of these accounts (password: `warba2025` for all):
 
-## Demo Credentials (for evaluation)
-
-Use these login credentials to explore all roles. All passwords are for demo purposes only.
-
-| Role | Username | Password |
-|------|----------|----------|
-| Relationship Manager (RM) | `rm_ahmad` | `warba2025` |
-| Risk Manager | `risk_sara` | `warba2025` |
-| Credit Committee | `cc_khalid` | `warba2025` |
-| Shariah Board | `sb_omar` | `warba2025` |
-| Admin | `admin_system` | `warba2025` |
-
-> **Note:** If your `.env` file is missing or you prefer not to copy it, set the environment variables shown above before running the seed script. This is especially important for `DATABASE_URL` – by default it points to PostgreSQL; for local demo, use the SQLite URL.
+| Username | Role | Name |
+|---|---|---|
+| `rm_ahmad` | Relationship Manager | Ahmad Al-Sabah |
+| `risk_sara` | Risk | Sara Al-Mutairi |
+| `cc_khalid` | Credit Committee | Khalid Al-Fadhli |
+| `sb_omar` | Shariah Board | Dr. Omar Al-Rashid |
+| `admin_system` | Admin | System Administrator |
 
 ---
 
@@ -100,6 +83,8 @@ All settings via environment variables (see `.env.example`):
 | `DATABASE_URL` | `postgresql://...` | SQLAlchemy connection string. |
 | `JWT_SECRET_KEY` | _(change me)_ | Secret for JWT signing. |
 
+**Note:** The default configuration runs in full mock mode. All LLM responses are deterministic templates, all connector data is synthetic, and no external API calls are made. To use real providers, set `MOCK_MODE=false` and supply API keys.
+
 ## Modules
 
 ### Core
@@ -110,7 +95,7 @@ All settings via environment variables (see `.env.example`):
 - **`app/core/audit.py`** — SHA-256 hash-chained audit trail
 
 ### Agents
-- **`llm_client.py`** — 6 providers (Anthropic, OpenAI, Azure, Bedrock, Ollama, Mock). Raises `LLMProviderError` when `MOCK_MODE=false` and credentials missing.
+- **`llm_client.py`** — 5 providers (Anthropic, OpenAI, Azure, Ollama, Mock). Raises `LLMProviderError` when `MOCK_MODE=false` and credentials missing. AWS Bedrock config variables exist but the provider is not yet implemented.
 - **`data_agent.py`** — RAG + integration connectors for client data retrieval
 - **`data_validation_agent.py`** — Data completeness/confidence scoring
 - **`ratio_agent.py`** — Financial ratio computation (DSCR, leverage, current, etc.)
@@ -170,7 +155,7 @@ React + TypeScript + Tailwind CSS + Recharts + Vite, redesigned around the **Fro
 - **Components** — Toast notifications, shimmer skeletons, badge/badge/table design primitives
 - **Responsive** — desktop and tablet breakpoints throughout
 
-### Screens (10)
+### Screens (9)
 
 1. **Landing Page** (`/landing`, public) — see below
 2. **Login** — JWT authentication
@@ -181,7 +166,6 @@ React + TypeScript + Tailwind CSS + Recharts + Vite, redesigned around the **Fro
 7. **Reporting Center** — Pipeline status donut, SLA breach risk, avg approval time, performance logs (SLA violations / approval delays) with CSV export
 8. **Audit Log** — Searchable, CSV-exportable hash-chained log
 9. **Admin & RBAC** — Role configuration, security policy toggles, system audit log, add-user provisioning
-10. **Notification Center** — In-app notifications with unread count, mark-as-read, and filter (bell icon in Layout)
 
 ## Landing Page
 
@@ -273,10 +257,11 @@ docker compose up --build       # Full stack on port 8000 (API) + 3000 (UI)
 
 ## Known Limitations
 
+- **Mock mode is the default** — no external LLM API is called in the demo.
+- **LangGraph is optional** — pipeline runs sequentially by default; LangGraph is not in requirements.txt.
+- **Bedrock provider is not implemented** — config variables exist; provider class does not.
+- **Redis is unused at runtime** — installed but not invoked.
 - **ECL in memo pipeline**: The ECL figures in the memo pipeline use synthetic data for demonstration purposes. The ECL engine itself (`app/risk/ecl_engine.py`) is validated separately with CBK/IFRS 9 parameters.
 - **Integration connectors**: Real CRM/Core Banking/Market Data connectors are currently mock adapters returning realistic synthetic data. Real bank API integrations are planned for production deployment.
 - **Vector store**: The current implementation uses JSON-based TF-IDF embedding storage rather than pgvector. A pgvector-backed store is recommended for production scale.
 - **Generation time claim**: The "<1 hour generation" claim in marketing materials is architectural — no formal benchmark suite is included. Actual generation time depends on LLM provider latency and infrastructure.
-
-
-
