@@ -6,6 +6,7 @@ Production-grade client documentation generator for Warba Bank.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 
 import structlog
@@ -37,10 +38,22 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS — allow frontend dev server
+# CORS — allow frontend (Vercel production + preview URLs, local dev)
+_cors_origins = [
+    "https://memo-forge.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+]
+# Extend from env var if set (comma-separated)
+_extra = os.environ.get("CORS_ORIGINS", "")
+if _extra:
+    _cors_origins.extend(o.strip() for o in _extra.split(",") if o.strip())
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=_cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",  # preview deploy URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

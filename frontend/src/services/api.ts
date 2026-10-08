@@ -13,12 +13,9 @@ import type {
   ClientProfile,
 } from "../types/api";
 
-const isLocal = typeof window !== "undefined" &&
-  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-
-const BASE = isLocal
-  ? "/api/v1"
-  : "https://memoforge-production.up.railway.app/v1";
+// Same-origin: Vercel rewrites /api/* to Railway backend (see frontend/vercel.json).
+// Local dev: Vite proxy rewrites /api/* to localhost:8000 (see vite.config.ts).
+const BASE = "/api/v1";
 
 function headers(): Record<string, string> {
   const token = localStorage.getItem("token");
