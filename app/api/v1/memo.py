@@ -345,52 +345,59 @@ def generate_memo(
     Runs the full pipeline: Data → Validation → Ratios → ECL → Risk →
     Narrative → Compliance → Auto-approval evaluation.
     """
-    memo = run_pipeline_up_to_review(
-        db=db,
-        client_id=request.client_id,
-        client_name=request.client_name or request.client_id,
-        facility_type=request.facility_type,
-        deal_value=request.deal_value,
-        bank_type=request.bank_type,
-        rm_acl_groups=user.acl_groups,
-        created_by=user.user_id,
-    )
-
-    # Send notification
     try:
-        send_notification(
+        memo = run_pipeline_up_to_review(
             db=db,
-            event_type="memo_generated",
-            recipient=user.user_id,
-            memo_id=memo.id,
-            data={
-                "client_id": request.client_id,
-                "facility_type": request.facility_type,
-                "memo_id": memo.id,
-            },
+            client_id=request.client_id,
+            client_name=request.client_name or request.client_id,
+            facility_type=request.facility_type,
+            deal_value=request.deal_value,
+            bank_type=request.bank_type,
+            rm_acl_groups=user.acl_groups,
+            created_by=user.user_id,
         )
-        db.commit()
+
+        # Send notification
+        try:
+            send_notification(
+                db=db,
+                event_type="memo_generated",
+                recipient=user.user_id,
+                memo_id=memo.id,
+                data={
+                    "client_id": request.client_id,
+                    "facility_type": request.facility_type,
+                    "memo_id": memo.id,
+                },
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning("Failed to send notification: %s", e)
+
+        # Build response
+        sections = []
+        try:
+            for s in memo.sections:
+                sections.append({
+                    "section_key": s.section_key,
+                    "title": s.title,
+                    "review_status": s.review_status,
+                    "requires_review": s.requires_review,
+                    "review_reason": s.review_reason,
+                    "auto_approved_rule": s.auto_approved_rule,
+                })
+        except Exception as e:
+            logger.warning("Failed to load sections: %s", e)
+
+        return GenerateMemoResponse(
+            memo_id=memo.id,
+            status=memo.status,
+            sections=sections,
+            workflow_stage=memo.workflow_stage,
+        )
     except Exception as e:
-        logger.warning("Failed to send notification: %s", e)
-
-    # Build response
-    sections = []
-    for s in memo.sections:
-        sections.append({
-            "section_key": s.section_key,
-            "title": s.title,
-            "review_status": s.review_status,
-            "requires_review": s.requires_review,
-            "review_reason": s.review_reason,
-            "auto_approved_rule": s.auto_approved_rule,
-        })
-
-    return GenerateMemoResponse(
-        memo_id=memo.id,
-        status=memo.status,
-        sections=sections,
-        workflow_stage=memo.workflow_stage,
-    )
+        logger.error("Generate memo failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Pipeline failed: {str(e)[:200]}")
 
 
 @router.get("/memos")

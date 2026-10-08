@@ -56,9 +56,10 @@ export default function GenerateMemo() {
           });
           push("Memo generated — routed for review.", "success");
           navigate(`/review/${res.memo_id}`);
-        } catch {
-          push("Pipeline complete. Opening review workspace.", "success");
-          navigate("/review/MEM-2026-081");
+        } catch (err) {
+          push("Pipeline failed. Please try again.", "error");
+          setRunning(false);
+          setStep(1);
         }
       }, 700);
       return () => window.clearTimeout(t);
