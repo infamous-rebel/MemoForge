@@ -466,6 +466,8 @@ def _run_sequential_pipeline(
         for step_name, step_func in steps:
             logger.info("Pipeline step '%s' starting for memo %s", step_name, memo.id)
             try:
+                # Rollback any pending transaction to ensure clean state
+                db.rollback()
                 state = step_func(state, db=db)
                 logger.info("Pipeline step '%s' completed", step_name)
             except Exception as step_err:
