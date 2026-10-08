@@ -483,6 +483,7 @@ def _run_sequential_pipeline(
 
     except Exception as e:
         logger.error("Sequential pipeline error: %s", e, exc_info=True)
+        db.rollback()  # Clear the failed transaction state
         # Memo already committed, just update status
         memo.status = "error"
         memo.metadata_json = {"error": str(e)[:500]}
