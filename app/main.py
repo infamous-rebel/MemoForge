@@ -79,12 +79,17 @@ async def startup_event():
     except Exception as e:
         logger.error("Config validation failed: %s", e)
 
-    # Initialize database
-    try:
-        init_db()
-        logger.info("Database initialized")
-    except Exception as e:
-        logger.warning("Database init skipped (may already exist): %s", e)
+    # Initialize database (retry on failure)
+    import time
+    for attempt in range(3):
+        try:
+            init_db()
+            logger.info("Database initialized")
+            break
+        except Exception as e:
+            logger.warning("Database init attempt %d failed: %s", attempt + 1, e)
+            if attempt < 2:
+                time.sleep(2)
 
 
 @app.get("/health")

@@ -432,7 +432,7 @@ export default function Landing() {
                   Request a Pilot
                 </button>
                 <p className="text-center text-xs text-frost-steel">
-                  Or contact us directly — pilots@memoforge.ai
+                  Or contact us directly — infamousrebelv@gmail.com
                 </p>
               </form>
             </div>
