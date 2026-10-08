@@ -293,7 +293,16 @@ def finalize_memo(db: Session, memo_id: str, user_id: str) -> Memo:
 
 
 def _check_stage_advancement(db: Session, memo: Memo) -> None:
-    """Check if the current stage can be advanced based on section approvals."""
+    """Check if the current stage can be advanced based on section approvals.
+
+    When ALL sections in the memo are approved (auto or manual), advance
+    the workflow to the next stage.  A WorkflowEvent row and an audit-log
+    entry are written for every transition so the history is complete.
+
+    TODO: If quorum / dual-approval is required for a future release, add
+    the check here.  For the current demo/pilot a single authorized user
+    is sufficient.
+    """
     workflow_config = get_approval_workflow()
     stages = workflow_config.get("stages", [])
 
@@ -301,7 +310,7 @@ def _check_stage_advancement(db: Session, memo: Memo) -> None:
     if current_idx >= len(stages) - 1:
         return
 
-    # Check if all sections relevant to current stage are approved
+    # Check if ALL sections are approved (auto or manual)
     sections = db.query(MemoSection).filter(MemoSection.memo_id == memo.id).all()
     all_approved = all(
         s.review_status in ("approved", "auto_approved")
@@ -309,18 +318,34 @@ def _check_stage_advancement(db: Session, memo: Memo) -> None:
     )
 
     if all_approved:
+        prev_stage = memo.workflow_stage
         next_stage = stages[current_idx + 1]
+
         event = WorkflowEvent(
             memo_id=memo.id,
-            from_stage=memo.workflow_stage,
+            from_stage=prev_stage,
             to_stage=next_stage,
             user_id=None,
             action="advance",
-            comment=f"Auto-advanced from {memo.workflow_stage} to {next_stage}",
+            comment=f"Auto-advanced from {prev_stage} to {next_stage} — all sections approved",
         )
         db.add(event)
         memo.workflow_stage = next_stage
         memo.status = next_stage
+
+        # Write to the audit chain
+        audit.record_event(
+            db=db,
+            action="stage_advance",
+            user_id=None,
+            memo_id=memo.id,
+            comment=f"Workflow advanced from {prev_stage} to {next_stage}",
+        )
+
+        logger.info(
+            "ApprovalOrchestrator: memo=%s advanced %s -> %s (all sections approved)",
+            memo.id, prev_stage, next_stage,
+        )
 
 
 def _build_section_flags(section: MemoSection) -> SectionFlags:

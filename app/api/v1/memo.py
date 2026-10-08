@@ -498,6 +498,17 @@ def get_memo(
 
     sections = []
     for s in memo.sections:
+        # Determine the primary required_role for this section from RBAC matrix
+        from app.core.business_config import get_section_approval_roles as _get_roles
+        _role_to_stage = {
+            "RM": "draft",
+            "Risk": "risk_review",
+            "CreditCommittee": "credit_committee",
+            "ShariahBoard": "shariah_board",
+            "Admin": "final_approval",
+        }
+        _allowed = _get_roles(s.section_key)
+        _required_role = _allowed[0] if _allowed else "Admin"
         sections.append({
             "section_key": s.section_key,
             "title": s.title,
@@ -509,6 +520,7 @@ def get_memo(
             "auto_approved_rule": s.auto_approved_rule,
             "flags": s.flags_json,
             "citations": s.citations_json,
+            "required_role": _required_role,
         })
 
     return MemoDetailResponse(

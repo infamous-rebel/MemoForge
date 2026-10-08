@@ -66,7 +66,7 @@ export async function approveSection(
 ): Promise<unknown> {
   return request(`/memo/${memoId}/approve`, {
     method: "POST",
-    body: JSON.stringify({ section_key: sectionKey, comments }),
+    body: JSON.stringify({ section_key: sectionKey, comment: comments }),
   });
 }
 
@@ -77,7 +77,7 @@ export async function rejectSection(
 ): Promise<unknown> {
   return request(`/memo/${memoId}/reject`, {
     method: "POST",
-    body: JSON.stringify({ section_key: sectionKey, comments }),
+    body: JSON.stringify({ section_key: sectionKey, comment: comments }),
   });
 }
 

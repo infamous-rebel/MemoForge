@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { approveSection, rejectSection, finalizeMemo, getMemo, getMemoAuditLog } from "../services/api";
+import { approveSection, rejectSection, finalizeMemo, getMemo, getMemoAuditLog, getMemoWorkflow } from "../services/api";
 import { useToast } from "../components/Toast";
 import type { Memo, AuditLogEntry } from "../types/api";
 
@@ -28,30 +28,65 @@ const workflowIcon: Record<string, { icon: string; className: string }> = {
   pending: { icon: "○", className: "border-2 border-frost-mist bg-white text-frost-steel" },
 };
 
+/** Maps a user role to the workflow_stage at which that role acts. */
+const roleToStage: Record<string, string> = {
+  RM: "draft",
+  Risk: "risk_review",
+  CreditCommittee: "credit_committee",
+  ShariahBoard: "shariah_board",
+  Admin: "final_approval",
+};
+
+/** Human-readable role labels for the sidebar / badges. */
+const roleLabel: Record<string, string> = {
+  RM: "Relationship Manager",
+  Risk: "Risk Manager",
+  CreditCommittee: "Credit Committee",
+  ShariahBoard: "Shariah Board",
+  Admin: "Admin",
+};
+
 export default function MemoReview() {
   const { memoId } = useParams();
   const navigate = useNavigate();
   const { push } = useToast();
   const role = localStorage.getItem("role") || "RM";
-  const canApprove = ["RM", "Risk", "CreditCommittee", "ShariahBoard", "Admin"].includes(role);
 
   const [memo, setMemo] = useState<Memo | null>(null);
   const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<Record<string, string>>({});
-  const [approved, setApproved] = useState<Record<string, boolean>>({});
-  const [rejected, setRejected] = useState<Record<string, boolean>>({});
+  const [workflowData, setWorkflowData] = useState<Record<string, unknown> | null>(null);
+
+  /** Re-fetch memo + audit + workflow from the backend (single source of truth). */
+  const refreshMemoState = async () => {
+    if (!memoId) return;
+    try {
+      const [memoRes, auditRes, wfRes] = await Promise.all([
+        getMemo(memoId),
+        getMemoAuditLog(memoId).catch(() => ({ entries: [] })),
+        getMemoWorkflow(memoId).catch(() => null),
+      ]);
+      setMemo(memoRes);
+      setAuditEntries(auditRes.entries);
+      if (wfRes) setWorkflowData(wfRes as Record<string, unknown>);
+    } catch (err) {
+      push("Failed to refresh memo state", "error");
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
       if (!memoId) return;
       try {
-        const [memoRes, auditRes] = await Promise.all([
+        const [memoRes, auditRes, wfRes] = await Promise.all([
           getMemo(memoId),
           getMemoAuditLog(memoId).catch(() => ({ entries: [] })),
+          getMemoWorkflow(memoId).catch(() => null),
         ]);
         setMemo(memoRes);
         setAuditEntries(auditRes.entries);
+        if (wfRes) setWorkflowData(wfRes as Record<string, unknown>);
       } catch (err) {
         push("Failed to load memo", "error");
       } finally {
@@ -64,23 +99,54 @@ export default function MemoReview() {
   const reviewSections = memo?.sections || [];
   const auditTrail = auditEntries;
 
-  // Mock workflow based on memo status
+  // Build the workflow sidebar from the memo's actual workflow_stage
+  const allStages = [
+    { role: "Relationship Manager", stage: "draft" },
+    { role: "Risk Manager", stage: "risk_review" },
+    { role: "Credit Committee", stage: "credit_committee" },
+    { role: "Shariah Board", stage: "shariah_board" },
+    { role: "Final Approval", stage: "final_approval" },
+  ];
+
+  const currentStageIdx = allStages.findIndex((s) => s.stage === memo?.workflow_stage);
+
   const reviewWorkflow = memo
-    ? [
-        { role: "Relationship Manager", kind: "done" as const, state: "SUBMITTED", meta: "Initial submission" },
-        { role: "Risk Manager", kind: memo.workflow_stage === "risk_review" ? "active" as const : "pending" as const, state: memo.workflow_stage === "risk_review" ? "REVIEWING" : "PENDING" },
-        { role: "Credit Committee", kind: "pending" as const, state: "PENDING" },
-        { role: "Shariah Board", kind: "pending" as const, state: "PENDING" },
-      ]
+    ? allStages.map((ws, idx) => ({
+        role: ws.role,
+        kind: idx < currentStageIdx
+          ? "done" as const
+          : idx === currentStageIdx
+            ? "active" as const
+            : "pending" as const,
+        state: idx < currentStageIdx
+          ? "APPROVED"
+          : idx === currentStageIdx
+            ? "REVIEWING"
+            : "PENDING",
+        meta: idx < currentStageIdx ? "Completed" : idx === currentStageIdx ? "In progress" : undefined,
+      }))
     : [];
+
+  /**
+   * Determine whether the current user can act on a given section.
+   * can_act = true only when:
+   *   1. The section's required_role matches the current user's role, AND
+   *   2. The memo's workflow_stage matches that role's designated stage.
+   */
+  const canActOnSection = (s: (typeof reviewSections)[number]): boolean => {
+    const sectionRole = s.required_role || "Admin";
+    if (sectionRole !== role) return false;
+    const expectedStage = roleToStage[sectionRole] || "draft";
+    return memo?.workflow_stage === expectedStage;
+  };
 
   const handleApprove = async (sectionKey: string) => {
     try {
       await approveSection(memoId ?? "", sectionKey, comments[sectionKey] ?? "");
       push(`Section approved.`, "success");
-      setApproved((prev) => ({ ...prev, [sectionKey]: true }));
-      setRejected((prev) => ({ ...prev, [sectionKey]: false }));
       setComments((prev) => ({ ...prev, [sectionKey]: "" }));
+      // BUG 2 FIX: re-fetch full state from backend instead of optimistic update
+      await refreshMemoState();
     } catch {
       push(`Failed to approve section. Please try again.`, "error");
     }
@@ -90,9 +156,9 @@ export default function MemoReview() {
     try {
       await rejectSection(memoId ?? "", sectionKey, comments[sectionKey] ?? "");
       push(`Section rejected with comment.`, "error");
-      setRejected((prev) => ({ ...prev, [sectionKey]: true }));
-      setApproved((prev) => ({ ...prev, [sectionKey]: false }));
       setComments((prev) => ({ ...prev, [sectionKey]: "" }));
+      // BUG 2 FIX: re-fetch full state from backend instead of optimistic update
+      await refreshMemoState();
     } catch {
       push(`Failed to reject section. Please try again.`, "error");
     }
@@ -102,15 +168,20 @@ export default function MemoReview() {
     try {
       await finalizeMemo(memoId ?? "");
       push("Memo finalized — compiled document archived.", "success");
+      await refreshMemoState();
     } catch {
       push("Failed to finalize memo. Please try again.", "error");
     }
   };
 
   const effectiveStatus = (s: (typeof reviewSections)[number]) => {
-    if (approved[s.section_key]) return "SECTION APPROVED";
-    if (rejected[s.section_key]) return "LOCKED";
-    return s.review_status === "auto_approved" ? "SECTION APPROVED" : s.review_status === "pending" ? "PENDING REVIEW" : s.review_status.toUpperCase();
+    return s.review_status === "auto_approved" || s.review_status === "approved"
+      ? "SECTION APPROVED"
+      : s.review_status === "rejected"
+        ? "LOCKED"
+        : s.review_status === "pending"
+          ? "PENDING REVIEW"
+          : s.review_status?.toUpperCase() || "PENDING REVIEW";
   };
 
   return (
@@ -237,25 +308,52 @@ export default function MemoReview() {
                   <p className="mt-3 font-mono text-xs text-frost-steel">{s.citation}</p>
                 )}
 
-                {/* Review controls */}
-                {!locked && (s.body || s.content) && (
-                  <div className="mt-6 border-t border-frost-mist pt-5">
-                    <label className="field-label">Review Comment</label>
-                    <textarea
-                      rows={2}
-                      value={comments[s.section_key] ?? ""}
-                      onChange={(e) => setComments((prev) => ({ ...prev, [s.section_key]: e.target.value }))}
-                      placeholder="Add a review comment…"
-                      className="field !py-2.5"
-                    />
-                    {canApprove && (
+                {/* Review controls — BUG 1 FIX: only show when can_act is true */}
+                {!locked && (s.body || s.content) && (() => {
+                  const canAct = canActOnSection(s);
+                  const isApproved = effectiveStatus(s) === "SECTION APPROVED";
+                  if (!canAct && !isApproved) {
+                    // Show muted badge instead of buttons
+                    const awaitingRole = s.required_role ? roleLabel[s.required_role] || s.required_role : "the appropriate reviewer";
+                    return (
+                      <div className="mt-6 border-t border-frost-mist pt-5">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-frost-light px-4 py-2 text-xs font-bold text-frost-steel">
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Awaiting {awaitingRole} review
+                        </span>
+                      </div>
+                    );
+                  }
+                  if (isApproved) {
+                    return (
+                      <div className="mt-6 border-t border-frost-mist pt-5">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-4 py-2 text-xs font-bold text-status-success">
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                          Section approved{s.approved_by ? ` by ${s.approved_by}` : ""}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="mt-6 border-t border-frost-mist pt-5">
+                      <label className="field-label">Review Comment</label>
+                      <textarea
+                        rows={2}
+                        value={comments[s.section_key] ?? ""}
+                        onChange={(e) => setComments((prev) => ({ ...prev, [s.section_key]: e.target.value }))}
+                        placeholder="Add a review comment…"
+                        className="field !py-2.5"
+                      />
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button
                           onClick={() => handleApprove(s.section_key)}
-                          disabled={!!approved[s.section_key]}
                           className="btn-navy !px-5 !py-2.5 text-xs"
                         >
-                          {approved[s.section_key] ? "✓ Approved" : "Approve Section"}
+                          Approve Section
                         </button>
                         <button
                           onClick={() => handleReject(s.section_key)}
@@ -264,9 +362,9 @@ export default function MemoReview() {
                           Reject with Comment
                         </button>
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
               </article>
             );
           })}
@@ -356,7 +454,7 @@ export default function MemoReview() {
             <button
               onClick={handleFinalize}
               className="btn-navy w-full py-3.5"
-              disabled={!canApprove}
+              disabled={role !== "Admin" && role !== "CreditCommittee"}
             >
               ✓ Finalize Memo
             </button>

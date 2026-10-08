@@ -17,6 +17,8 @@ export interface MemoSection {
   review_reason: string;
   citations_json: Record<string, string> | null;
   flags_json: Record<string, unknown> | null;
+  required_role?: string;
+  approved_by?: string;
   // Optional fields from mock data (may not be in API)
   roleRestriction?: string;
   infoBanner?: string;
