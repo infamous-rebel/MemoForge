@@ -13,9 +13,12 @@ import type {
   ClientProfile,
 } from "../types/api";
 
-const BASE = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/v1`
-  : "/api/v1";
+const isLocal = typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+const BASE = isLocal
+  ? "/api/v1"
+  : "https://memoforge-production.up.railway.app/v1";
 
 function headers(): Record<string, string> {
   const token = localStorage.getItem("token");
