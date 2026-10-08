@@ -469,6 +469,7 @@ def _run_sequential_pipeline(
 
     except Exception as e:
         logger.error("Sequential pipeline error: %s", e, exc_info=True)
+        db.rollback()  # Rollback failed transaction before updating
         memo.status = "error"
         memo.metadata_json = {"error": str(e)[:500]}
         db.commit()
